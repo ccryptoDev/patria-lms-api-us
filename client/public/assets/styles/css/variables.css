@@ -1,0 +1,121 @@
+:root{
+    /* FONTS */
+    --primary-font-fam: "Ridley Grotesk", "Roboto", "sans-serif";
+    --dashboard-font-fam: "Roboto", "sans-serif";
+    --heading-color: #363636;
+    --heading-white-color: #FFF;
+    --generalText-color: #363636;
+    --datePickerHeadingHover-color: #ddd;
+    --datePickerHeading-color: #363636;
+    --icon-dark-color: #363636;
+
+    /* BRAND COLORS */
+    /* --primary-color: #e96fa1; */
+    --primary-color: #ea4c89;
+    --primary-hover-color: rgb(255 66 144);
+    --secondary-color: #363636;
+    --tertiary-color: #FFF;
+    --dashboard-bg-color: #F8F7FB;
+    --backdrop-bg-color: #F8F7FB;
+    --dark: #444;
+    --white-color: #FFF;
+    --modal-form-wrapper-color: #edebf2;
+    --panel-dropdown-bg: #e9e7f0;
+    --subpanel-dropdown-bg: #e6e2f3;
+
+    --table-bordered-border: 1px solid rgba(0, 0, 0, 0.06);
+
+    /* ALERT/STATUS COLORS */
+    /* --warning-color: #FF974A; */
+    /* --success-color: #51C469; */
+    --warning-color: #E29833;
+    --success-color: #38C0C6;
+    --danger-color: #FC5A5A;
+    
+    --warning-bg-color: #ffb94a5e;
+    --success-bg-color: #38c0c678;
+    --danger-bg-color: #fc5a5a33;
+    --danger-bg-color-solid: #fc5a5a8c;
+    /* --success-bg-color: #3dd59842; */
+    /* --warning-bg-color: #FEF5EC;
+    --success-bg-color: #3dd59842;
+    --danger-bg-color: #FEEFEF; */
+    --status-pill-font-color: #FFF;
+    
+    
+    --hr-dark: #444;
+    --hr-lightgray-1: #eee;
+    --hr-lightgray-2: #ddd;
+
+    /* INPUTS */
+    --placeholder-text-color: #a9a7a7;
+
+    /* CUSTOM SCROLLBAR */
+    --scrollbar-thumb-color: #ccc;
+
+    /* BORDERS */
+    --primary-border-radius: 20px;
+    --secondary-border-radius: 6px;
+    --inner-card-border-radius: 16px;
+    
+    /* SELECTHOLDER */
+    --selectholder-dropdown-bg: #f8f7fbde;
+    --selectholder-option-textColor: #666;
+    --selectholder-option-border: #eee;
+    
+    --selectTableFilter-dropdown-bg: #f8f7fbde;
+    /* SIDEBAR */
+    --sidebar-right-border-radius: 30px;
+    
+    /* DATATABLES LOADING SPINNER */
+    --dataTableSpinner-bg: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, 
+    rgba(255, 255, 255, 0.6) 25%, 
+    rgba(255, 255, 255, 0.6) 75%, 
+    rgba(255, 255, 255, 0) 100%) !important;
+
+    /* DASHBOARD NAVBAR */
+    --nav-BG-transparent-dark: #26252ecf;
+    --nav-BG-transparent-light: #f8f7fb96;
+    --nav-border-transparent-dark: #1b1b20;
+    --nav-border-transparent-light: #e8e8e8;
+}
+
+.darkMode {
+    /* FONTS */
+    --heading-color: #fff !important;
+    --icon-dark-color: #26242E !important;
+    
+    /* BRAND COLORS */
+    --dashboard-bg-color: #26242E !important;
+    --dark: #514e62 !important;
+    --white-color: #1a1a20 !important;
+    --modal-form-wrapper-color: #1a1a20 !important;
+    --panel-dropdown-bg: #333341 !important;
+    --subpanel-dropdown-bg: #5b5c6c !important;
+    
+    /* CUSTOM SCROLLBAR */
+    --scrollbar-thumb-color: #131315;
+
+    --table-bordered-border: 1px solid #f1ffff1f;
+
+
+    /* SELECTHOLDER */
+    --selectholder-dropdown-bg: #f16ba23d;
+    --selectholder-option-textColor: #ddd;
+    --selectholder-option-border: #714959;
+
+    --selectTableFilter-dropdown-bg: #1a1a2047;
+
+    --hr-lightgray-1: #444 !important;
+    --hr-lightgray-2: #333 !important;
+
+    /* DATATABLES LOADING SPINNER */
+    --dataTableSpinner-bg: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, 
+    #26252ecf 25%, 
+    #26252ecf 75%, 
+    rgba(255, 255, 255, 0) 100%) !important;
+
+    /* DASHBOARD NAVBAR */
+    --nav-BG-transparent-light: #26252ecf !important;
+    --nav-border-transparent-light: #1b1b20 !important;
+}

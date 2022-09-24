@@ -1,0 +1,8 @@
+{
+  "moduleFileExtensions": ["js", "ts", "json"],
+  "transform": {
+    "^.+\\.tsx?$": "./node_modules/ts-jest/preprocessor.js"
+  },
+  "testRegex": "./e2e/.*\\.(e2e-test|e2e-spec).ts|tsx|js)$",
+  "coverageReporters": ["json", "lcov", "text"]
+}

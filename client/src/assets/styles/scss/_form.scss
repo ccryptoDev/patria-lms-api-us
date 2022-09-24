@@ -1,0 +1,64 @@
+
+.form-section-label {
+  font-size: 16px;
+  font-weight: bold;
+  font-stretch: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: 0.8px;
+  text-align: left;
+  color: #363636;
+  margin-bottom: 25px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+
+  label {
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    text-align: left;
+    color: #363636;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .form-control {
+    height: 50px;
+    border: solid 1px #dadada;
+    background-color: #ffffff;
+    border-radius: 0;
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 1.11;
+    letter-spacing: normal;
+    text-align: left;
+    color: #495057;
+    margin-bottom: 6px;
+
+    &.has-error {
+      border: solid 1px $primary;
+      background: rgba(lighten($primary, 28%), 0.7);
+    }
+  }
+
+  .input-info {
+    font-size: 10px;
+    font-weight: normal;
+    line-height: 1;
+    letter-spacing: 0.5px;
+    text-align: left;
+    color: #141915;
+  }
+}
+
+.input-error {
+  font-size: 10px;
+  text-transform: uppercase;
+  line-height: 1;
+  letter-spacing: 0.5px;
+  text-align: left;
+  color: $primary;
+  font-weight: bold;
+}

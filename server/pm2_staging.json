@@ -1,0 +1,18 @@
+{
+  "apps": [
+    {
+      "name": "patria_lms",
+      "script": "dist/main.js",
+      "watch": false,
+      "log_date_format": "YYYY-MM-DD HH:mm:ss.SSS",
+      "out_file": "~/.pm2/logs/patria_lms.log",
+      "error_file": "~/.pm2/logs/patria_lms.log",
+      "max_memory_restart": "512M",
+      "env": {
+        "NODE_ENV": "staging",
+        "PORT": 19190,
+        "TOKEN_SECRET": "14495376e5f661f3d7c525cfedda17c07a548aff5559733810f7ceeba39a82137253adc9b017025b5c6d8cd7f30aa74611d0ae0895e25f67725291ac59927c67"
+      }
+    }
+  ]
+}

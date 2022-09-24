@@ -1,0 +1,22 @@
+.btn {
+  font-size: 14px;
+  font-weight: bold;
+  font-style: normal;
+  letter-spacing: 0.5px;
+  text-align: left;
+  text-decoration: none;
+  text-transform: uppercase;
+  border-radius: 0;
+}
+
+.btn-link {
+  color: #282828;
+
+  &:hover {
+    text-decoration: none;
+  }
+}
+
+.btn-primary {
+  color: #fff;
+}

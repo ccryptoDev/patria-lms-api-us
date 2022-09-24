@@ -1,0 +1,9 @@
+$body-bg: #ffffff;
+$body-color: #363636;
+
+$theme-colors: (
+        "primary": #f16ba2,
+        "danger": darken(#f16ba2, 5%)
+);
+
+$primary: #f16ba2 !default;

@@ -1,0 +1,146 @@
+@import url('https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700,800');
+
+/*
+Open Sans
+font-family: 'Open Sans', sans-serif;
+light 300
+regular 400
+semi-bold 600
+bold 700
+extra-bold 800
+*/
+
+
+@font-face {
+    font-family: 'Avenir Next Demi';
+    src: url('AvenirNext-DemiBold.eot');
+    src: local('Avenir Next Demi Bold'), local('AvenirNext-DemiBold'),
+    url('AvenirNext-DemiBold.eot?#iefix') format('embedded-opentype'),
+    url('AvenirNext-DemiBold.woff2') format('woff2'),
+    url('AvenirNext-DemiBold.woff') format('woff'),
+    url('AvenirNext-DemiBold.ttf') format('truetype'),
+    url('AvenirNext-DemiBold.svg#AvenirNext-DemiBold') format('svg');
+    font-weight: 600;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Avenir Next';
+    src: url('fonts/AvenirNext-Regular.eot');
+    src: local('Avenir Next Regular'), local('AvenirNext-Regular'),
+    url('fonts/AvenirNext-Regular.eot?#iefix') format('embedded-opentype'),
+    url('fonts/AvenirNext-Regular.woff2') format('woff2'),
+    url('fonts/AvenirNext-Regular.woff') format('woff'),
+    url('fonts/AvenirNext-Regular.ttf') format('truetype'),
+    url('fonts/AvenirNext-Regular.svg#AvenirNext-Regular') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Avenir Next';
+    src: url('fonts/AvenirNext-Bold.eot');
+    src: local('Avenir Next Bold'), local('AvenirNext-Bold'),
+    url('fonts/AvenirNext-Bold.eot?#iefix') format('embedded-opentype'),
+    url('fonts/AvenirNext-Bold.woff2') format('woff2'),
+    url('fonts/AvenirNext-Bold.woff') format('woff'),
+    url('fonts/AvenirNext-Bold.ttf') format('truetype'),
+    url('fonts/AvenirNext-Bold.svg#AvenirNext-Bold') format('svg');
+    font-weight: bold;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Avenir Next';
+    src: url('fonts/AvenirNext-Medium.eot');
+    src: local('Avenir Next Medium'), local('AvenirNext-Medium'),
+    url('fonts/AvenirNext-Medium.eot?#iefix') format('embedded-opentype'),
+    url('fonts/AvenirNext-Medium.woff2') format('woff2'),
+    url('fonts/AvenirNext-Medium.woff') format('woff'),
+    url('fonts/AvenirNext-Medium.ttf') format('truetype'),
+    url('fonts/AvenirNext-Medium.svg#AvenirNext-Medium') format('svg');
+    font-weight: 500;
+    font-style: normal;
+}
+
+
+@font-face {
+    font-family: 'Ridley Grotesk';
+    src: url('fonts/RidleyGrotesk-Thin.ttf');
+    src: local('RidleyGrotesk-Thin'),
+        url('fonts/RidleyGrotesk-Thin.ttf?#iefix') format('opentype');
+    font-weight: 500;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Ridley Grotesk';
+    src: url('fonts/RidleyGrotesk-ThinItalic.ttf');
+    src: local('RidleyGrotesk-ThinItalic'),
+    url('fonts/RidleyGrotesk-ThinItalic.ttf?#iefix') format('opentype');
+    font-weight: 500;
+    font-style: italic;
+}
+@font-face {
+    font-family: 'Ridley Grotesk';
+    src: url('fonts/RidleyGrotesk-Regular.ttf');
+    src: local('RidleyGrotesk-Regular'),
+    url('fonts/RidleyGrotesk-Regular.ttf?#iefix') format('opentype');
+    font-weight: 500;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Ridley Grotesk';
+    src: url('fonts/RidleyGrotesk-Italic.ttf');
+    src: local('RidleyGrotesk-Italic'),
+    url('fonts/RidleyGrotesk-Italic.ttf?#iefix') format('opentype');
+    font-weight: 500;
+    font-style: italic;
+}
+@font-face {
+    font-family: 'Ridley Grotesk';
+    src: url('fonts/RidleyGrotesk-Medium.ttf');
+    src: local('RidleyGrotesk-Medium'),
+    url('fonts/RidleyGrotesk-Medium.ttf?#iefix') format('opentype');
+    font-weight: 600;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Ridley Grotesk';
+    src: url('fonts/RidleyGrotesk-MediumItalic.ttf');
+    src: local('RidleyGrotesk-MediumItalic'),
+    url('fonts/RidleyGrotesk-MediumItalic.ttf?#iefix') format('opentype');
+    font-weight: 600;
+    font-style: italic;
+}
+@font-face {
+    font-family: 'Ridley Grotesk';
+    src: url('fonts/RidleyGrotesk-SemiBold.ttf');
+    src: local('RidleyGrotesk-SemiBold'),
+    url('fonts/RidleyGrotesk-SemiBold.ttf?#iefix') format('opentype');
+    font-weight: 700;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Ridley Grotesk';
+    src: url('fonts/RidleyGrotesk-SemiBoldItalic.ttf');
+    src: local('RidleyGrotesk-SemiBoldItalic'),
+    url('fonts/RidleyGrotesk-SemiBoldItalic.ttf?#iefix') format('opentype');
+    font-weight: 700;
+    font-style: italic;
+}
+@font-face {
+    font-family: 'Ridley Grotesk';
+    src: url('fonts/RidleyGrotesk-Bold.ttf');
+    src: local('RidleyGrotesk-Bold'),
+    url('fonts/RidleyGrotesk-Bold.ttf?#iefix') format('opentype');
+    font-weight: 800;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Ridley Grotesk';
+    src: url('fonts/RidleyGrotesk-BoldItalic.ttf');
+    src: local('RidleyGrotesk-BoldItalic'),
+    url('fonts/RidleyGrotesk-BoldItalic.ttf?#iefix') format('opentype');
+    font-weight: 800;
+    font-style: italic;
+}
