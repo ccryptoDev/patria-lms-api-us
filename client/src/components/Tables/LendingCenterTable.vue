@@ -9,7 +9,7 @@
         Move to collections
       </button>
     </div> -->
-    <PerformingTemplate v-if="currentStatus === 'in-repayment prime'" title="In-Repayment Applications"
+    <PerformingTemplate v-if="currentStatus === 'in-repayment'" title="In-Repayment Applications"
       screenTitle="Lending" :rows="rows" />
     <PerformingTemplate v-if="currentStatus === 'in-repayment non-prime'" title="In-Repayment Non-Prime Applications"
       screenTitle="Lending" :rows="rows" />
@@ -51,7 +51,7 @@ export default Vue.extend({
           text: "All",
         },
         {
-          status: "in-repayment prime",
+          status: "in-repayment",
           text: "In-Repayment",
         },
         // {
@@ -79,6 +79,14 @@ export default Vue.extend({
           "in-repayment delinquent2",
           "in-repayment delinquent3",
           "in-repayment delinquent4",
+        ];
+      }
+
+      if (event.status === "in-repayment") {
+        event.status = [
+          "in-repayment prime",
+          "in-repayment",
+          "in-repayment non-prime"
         ];
       }
 

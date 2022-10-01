@@ -394,6 +394,7 @@ export default Vue.extend({
       } = dashboardDataResponse.data;
       this.email = email;
       if (
+        paymentManagementData?.status === "in-repayment" ||
         paymentManagementData?.status === "in-repayment prime" ||
         paymentManagementData?.status === "in-repayment non-prime" ||
         paymentManagementData?.status === "in-repayment delinquent1" ||

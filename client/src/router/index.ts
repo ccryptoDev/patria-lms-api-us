@@ -11,6 +11,7 @@ import ManageAdminUsers from "./../views/admin/ManageAdminUsers.vue";
 import ManageLoanSettings from "./../views/admin/LoanSettings.vue";
 import NeedsReview from "./../views/admin/NeedsReview.vue"
 import ManualReview from "./../views/admin/ManualReview.vue"
+import AdminApproval from "./../views/admin/AdminApprovals.vue"
 import ActionItems from "./../views/admin/ActionItems.vue"
 import ManageUsers from "./../views/admin/ManageUsers.vue";
 import ManagePractice from "./../views/admin/ManagePractice.vue";
@@ -78,6 +79,13 @@ const routes: Array<RouteConfig> = [
     path: "/admin/manual-review",
     name: "Manual Review",
     component: ManualReview,
+    meta: { authorize: adminRoles },
+    props: true,
+  },
+  {
+    path: "/admin/approvals",
+    name: "Admin Approval",
+    component: AdminApproval,
     meta: { authorize: adminRoles },
     props: true,
   },

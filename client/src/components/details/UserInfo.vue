@@ -332,7 +332,7 @@ export default Vue.extend({
         this.userData = { ...this.userData, ...payload }
         await this.$swal({
           title: "Success",
-          text: fieldName === 'email' ? `Verification Email has been sent to ${this.updatedData.email}` : 'Updated Successfully',
+          text: fieldName === 'email' ? `Verification Email has been sent to ${this.updatedData.email}` : response.data.message,
           icon: "success",
         });
         return null;

@@ -5,6 +5,7 @@ import { TableRequestEvent } from "../types/tables";
 import baseUrl from "../../app.config";
 import { getUserToken } from "@/user-application/authentication/helpers";
 
+
 class AdminDashboardRequests {
   async getLoans({
     search,
@@ -34,6 +35,39 @@ class AdminDashboardRequests {
     }
 
     const response = await getRequester().get(`/api/admin/dashboard/loans`, {
+      params: requestParams,
+    });
+    return response;
+  }
+
+  async getApprovalsRequest({
+    search,
+    perPage,
+    page,
+    status,
+    source,
+    type,
+  }: TableRequestEvent): Promise<AxiosResponse<any>> {
+    const requestParams: {
+      status: string | string[];
+      perPage: number;
+      page: number;
+      search?: string;
+      source?: string;
+      type?: string;
+    } = { perPage, page, status };
+    if (search) {
+      requestParams.search = search;
+    }
+    if (source) {
+      requestParams.source = source;
+    }
+
+    if (type) {
+      requestParams.type = type;
+    }
+
+    const response = await getRequester().get(`/api/admin/dashboard/approvals`, {
       params: requestParams,
     });
     return response;
@@ -811,6 +845,16 @@ class AdminDashboardRequests {
     const response = await getRequester().post(
       `/api/admin/dashboard/loans/forgiveSingleLateFee/${screenTrackingId}`,
       payment
+    );
+
+    return response;
+  }
+
+  async actionOnApprovalRequest(payload: { status: string, approvalId: string }
+  ): Promise<AxiosResponse<any>> {
+    const response = await getRequester().put(
+      `/api/admin/dashboard/approvals/action `,
+      payload
     );
 
     return response;

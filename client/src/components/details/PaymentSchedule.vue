@@ -31,7 +31,7 @@
           </tr>
           <tr v-if="isInRepayment || isPaid">
             <th>APR</th>
-            <td>{{ paymentManagement.interestApplied }}%</td>
+            <td>{{ paymentManagement.apr }}%</td>
           </tr>
           <tr v-if="isInRepayment || isPaid">
             <th>Financing Term</th>
@@ -117,13 +117,13 @@
       ">
       <h3></h3>
 
-      <div class="tooltipvue">
+      <!-- <div class="tooltipvue">
         <button v-tooltip="'You have new messages.'" v-if="this.collectionCheck != ''" class="primary"
           style="margin-right: 10px; background-color: #ea4c89; color: white" @click="movetocollections(email, 'in')">
           Move to collections
         </button>
         <span class="tooltiptextvue">Can move loan to collections</span>
-      </div>
+      </div> -->
 
       <div class="tooltipvue">
         <button v-if="

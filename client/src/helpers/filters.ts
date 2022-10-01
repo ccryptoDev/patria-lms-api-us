@@ -12,7 +12,7 @@ Vue.filter("phone", function(value: string) {
 
 Vue.filter("date", (value: string) => {
   if (value) {
-    return moment(value).format("MM/DD/YYYY");
+    return moment(value).utc().format("MM/DD/YYYY");
   }
 });
 

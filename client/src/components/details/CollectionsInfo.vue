@@ -466,6 +466,7 @@ export default Vue.extend({
         this.screenTrackingId
       );
       if (
+        data?.status === "in-repayment" ||
         data?.status === "in-repayment prime" ||
         data?.status === "in-repayment non-prime" ||
         data?.status === "in-repayment delinquent1" ||

@@ -34,8 +34,8 @@ export default Vue.extend({
         opportunities: "Opportunities - Approved, Pending",
         denied: "Denied Applications",
         expired: "Expired Applications",
-        delinquent: "Delinquency Applications",
-        inRepayment: "Contracts In Repayment",
+        delinquent: "Delinquent Accounts",
+        inRepayment: "Loan In Repayment",
       },
       linkForStatus: {
         opportunities: "/admin/opportunities",

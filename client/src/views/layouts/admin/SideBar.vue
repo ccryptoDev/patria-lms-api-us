@@ -23,6 +23,12 @@
         </router-link>
       </li>
       <li v-if="userData.role === adminRoles.SuperAdmin">
+        <router-link active-class="selected" class="side-nav-link" to="/admin/approvals">
+          <i class="material-icons">article</i>
+          <span>Admin Approvals</span>
+        </router-link>
+      </li>
+      <li v-if="userData.role === adminRoles.SuperAdmin">
         <router-link active-class="selected" class="side-nav-link" to="/admin/needs-review">
           <i class="material-icons">info</i>
           <span>Delinquent Loans</span>
