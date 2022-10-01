@@ -1,123 +1,86 @@
-import mongoose, { Model } from 'mongoose';
-import { ScreenTrackingSchema } from '../src/user/screen-tracking/screen-tracking.schema';
-import { PaymentManagementSchema } from '../src/loans/payments/payment-management/payment-management.schema';
-import { UserSchema } from '../src/user/user.schema';
-import { IPaymentScheduleItem } from 'src/loans/payments/payment-management/payment-schedule-item.interface';
-const connectDB = async () => {
-  try {
-    const uri = 'mongodb://localhost/patria';
-    await mongoose
-      .connect(uri, {
-        useNewUrlParser: true,
-        useCreateIndex: true,
-        useUnifiedTopology: true,
-      })
-      .catch((error) => console.log(error));
-    const connection = mongoose.connection;
-    console.log('MONGODB CONNECTED SUCCESSFULLY!');
-  } catch (error) {
-    console.log(error);
-    return error;
+import moment from 'moment';
+import mongodb from 'mongodb';
+import { PaymentManagementDocument } from 'src/loans/payments/payment-management/payment-management.schema';
+import { EmploymentHistory } from 'src/user/employment-history/employment-history.schema';
+import { ScreenTrackingDocument } from 'src/user/screen-tracking/screen-tracking.schema';
+import { UserDocument } from 'src/user/user.schema';
+
+const getFirstPaymentDate = (loanStartDate: Date): Date => {
+  const dayINeed = 5; // for Friday
+  const today = moment(loanStartDate).isoWeekday();
+
+  // if we haven't yet passed the day of the week that I need:
+  if (today < 2) {
+    // then just give me this week's instance of that day
+    return moment(loanStartDate).isoWeekday(dayINeed).startOf('day').toDate();
+  } else {
+    // otherwise, give me *next week's* instance of that same day
+    return moment(loanStartDate)
+      .add(1, 'weeks')
+      .isoWeekday(dayINeed)
+      .startOf('day')
+      .toDate();
   }
 };
-const screenTrackingModel = mongoose.model(
-  'ScreenTracking',
-  ScreenTrackingSchema,
-);
-const paymentmanagementModel = mongoose.model(
-  'Payment_Management',
-  PaymentManagementSchema,
-);
-const userModel = mongoose.model('User', UserSchema);
-async function closeDB() {
-  console.log('CLOSING CONNECTION');
-  await mongoose.disconnect();
-}
-connectDB();
-const connectScreen = async () => {
+
+const MongoClient = mongodb.MongoClient;
+
+(async () => {
   try {
-    const user = await userModel.findOne({
-      email: 'melissa.martinez1293@gmail.com', //melissa.martinez1293@gmail.com
+    const dbURL = 'mongodb://localhost:27017';
+    const client = await MongoClient.connect(dbURL, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
     });
-    if (user != null) {
-      const findscreenTracking = await screenTrackingModel.find({
-        _id: user['screenTracking'],
-      });
-      if (findscreenTracking != null) {
-        const paymentManagement = await paymentmanagementModel.findOne({
-          user: user['_id'],
-        });
-        if (paymentManagement != null) {
-          const paymentScheduleItems: IPaymentScheduleItem[] =
-            paymentManagement['paymentSchedule'];
+    console.log(`Connected to ${dbURL}`);
 
-          for (let index = 0; index <= paymentScheduleItems.length; index++) {
-            // if (
-            //   paymentScheduleItems[index] != undefined &&
-            //   paymentScheduleItems[index].status === 'opened'
-            // ) {
-            //   let date = new Date();
-            //   date = paymentScheduleItems[index].date;
-            //   console.log('updatedPaymentManagement ++ ', date);
-            //   // add a day
-            //   date = new Date(date.setDate(date.getDate() - 0));
-            //   paymentScheduleItems[index].date = date;
-            //   console.log(
-            //     'updatedPaymentManagement -- ',
-            //     paymentScheduleItems[index].date,
-            //   );
+    const clientRef = client;
+    const db = client.db('patria');
 
-            //   const updatedPaymentManagement = {
-            //     paymentSchedule: paymentScheduleItems,
-            //   };
+    const loanList = await db
+      .collection('paymentmanagement')
+      .find<PaymentManagementDocument>({
+        status: { $in: ['in-repayment prime', 'in-repayment'] },
+      })
+      .toArray();
 
-            //   //   console.log(
-            //   //     'updatedPaymentManagement -- ',
-            //   //     updatedPaymentManagement,
-            //   //   );
-            //   await paymentmanagementModel.updateOne(
-            //     { user: user._id },
-            //     updatedPaymentManagement,
-            //   );
-            // }
-            if (
-              paymentScheduleItems[index] != undefined &&
-              paymentScheduleItems[index].status === 'paid'
-            ) {
-              let date = new Date(paymentScheduleItems[index].date);
-              const months = date.getMonth();
-              if (months === 11) {
-                const myDate = new Date('01/02/2022');
-                date = new Date(myDate);
-                paymentScheduleItems[index].date = date;
-                console.log(
-                  'updatedPaymentManagement -- PAID',
-                  paymentScheduleItems[index].date,
-                );
+    console.log('paymentmanagement.length', loanList.length);
 
-                const updatedPaymentManagement = {
-                  paymentSchedule: paymentScheduleItems,
-                };
+    try {
+      for (const loan of loanList) {
+        const screenTracking = await db
+          .collection('screentracking')
+          .findOne<ScreenTrackingDocument>({
+            _id: loan.screenTracking,
+          });
 
-                await paymentmanagementModel.updateOne(
-                  { user: user._id },
-                  updatedPaymentManagement,
-                );
-              }
-            }
-          }
-
-          // const paymentModel = await paymentmanagementModel.find({
-          //   id: msg._id,
-          // });
-        }
+        const selectedOffer = screenTracking.selectedOffer;
+        console.log(loan.loanStartDate);
+        console.log(selectedOffer.term);
+        const newMaturityDate = moment(getFirstPaymentDate(loan.loanStartDate))
+          .startOf('day')
+          .add(Math.floor(selectedOffer.term * 4.34524) - 1, 'weeks')
+          .toDate();
+        console.log(newMaturityDate);
+        await db.collection('paymentmanagement').updateOne(
+          { _id: loan._id },
+          {
+            $set: {
+              maturityDate: newMaturityDate,
+            },
+          },
+        );
+        console.log('Maturity date updated successfully.');
       }
+    } catch (e) {
+      console.log('error: %s', e.message);
     }
 
-    await closeDB();
+    await clientRef.close();
+    console.log('Connection closed.');
+    process.exit(0);
   } catch (error) {
-    console.log(error);
-    return error;
+    console.log('Could not execute script. Error: ', error);
+    process.exit(0);
   }
-};
-connectScreen();
+})();

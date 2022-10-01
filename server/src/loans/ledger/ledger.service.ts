@@ -62,7 +62,7 @@ export class LedgerService {
       ledger.payoff - ledger.unpaidInterestBalance,
       2,
     );
-    ledger.dailyInterest = paymentManagement.interestApplied / 365;
+    ledger.dailyInterest = paymentManagement.apr / 365;
     const num = 0;
 
     // paymentSchedule.forEach((scheduleItem) => {
@@ -245,13 +245,21 @@ export class LedgerService {
     scheduleItem: IPaymentScheduleItem,
   ): ILedger {
     ledger.cycleStartDate = moment(scheduleItem.date)
-      .subtract(1, 'month')
+      .subtract(1, 'week')
       .startOf('day')
       .toDate();
     ledger.cycleEndDate = moment(scheduleItem.date).startOf('day').toDate();
-    ledger.daysInCycle = moment(ledger.ledgerDate)
-      .startOf('day')
-      .diff(moment(ledger.loanStartDate), 'days');
+    ledger.daysInCycle =
+      moment(ledger.ledgerDate)
+        .startOf('day')
+        .diff(
+          moment(
+            scheduleItem.week === 1
+              ? ledger.loanStartDate
+              : ledger.cycleStartDate,
+          ),
+          'days',
+        ) - (scheduleItem.week === 1 ? 0 : 1);
 
     // accrued balances
     ledger.cycleAccruedInterest =
@@ -310,15 +318,23 @@ export class LedgerService {
     }
     //ledger.principalBalance = ledger.principalBalance - scheduleItem.principal;
     ledger.cycleStartDate = moment(scheduleItem.date)
-      .subtract('1', 'month')
+      .subtract('1', 'week')
       .startOf('day')
       .toDate();
 
     ledger.cycleEndDate = moment(scheduleItem.date).startOf('day').toDate();
 
-    ledger.daysInCycle = moment(ledger.cycleEndDate)
-      .startOf('day')
-      .diff(moment(ledger.cycleStartDate), 'days');
+    ledger.daysInCycle =
+      moment(ledger.cycleEndDate)
+        .startOf('day')
+        .diff(
+          moment(
+            scheduleItem.week === 1
+              ? ledger.loanStartDate
+              : ledger.cycleStartDate,
+          ),
+          'days',
+        ) - (scheduleItem.week === 1 ? 0 : 1);
 
     ledger.cycleAccruedInterest = this.toFixed(
       (ledger.dailyInterest * ledger.daysInCycle * ledger.principalBalance) /

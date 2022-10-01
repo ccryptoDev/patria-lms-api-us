@@ -49,6 +49,9 @@ import { MandrillService } from '../../mandrill/mandrill.service';
 import { AuthService } from '../../user/auth/auth.service';
 import * as jwt from 'jsonwebtoken';
 import { secret } from '../../user/auth/auth.config';
+import { Role } from '../../../src/user/auth/roles/role.enum';
+import { CollectionName } from '../../../src/user/admin/approvals/approval.dto';
+import { AdminApprovalService } from '../../../src/user/admin/approvals/approval.service';
 
 @Injectable()
 export class AdminDashboardService {
@@ -77,7 +80,8 @@ export class AdminDashboardService {
     private readonly nunjucksService: NunjucksCompilerService,
     private readonly mailService: MandrillService,
     private readonly authService: AuthService,
-  ) { }
+    private readonly adminApprovalService: AdminApprovalService,
+  ) {}
 
   async getApplicationByStatus(
     status: PaymentManagement['status'],
@@ -111,8 +115,7 @@ export class AdminDashboardService {
         mappedDataFields,
       );
     }
-    console.log('matchCriteria', matchCriteria);
-
+    // console.log('matchCriterai====>', matchCriteria['$and'][0]['$or']);
     const result = await this.queryApplicationsByStatus(
       matchCriteria,
       page,
@@ -137,10 +140,11 @@ export class AdminDashboardService {
             screenTracking?.offerData?.loanAmount +
             paidPrincipal;
         }
-        const paymentManagementDoc: PaymentManagementDocument =
-          await this.PaymentManagementModel.findOne({
+        const paymentManagementDoc: PaymentManagementDocument = await this.PaymentManagementModel.findOne(
+          {
             _id: paymentManagement._id,
-          });
+          },
+        );
         const ledger = this.ledgerService.getPaymentLedger(
           paymentManagementDoc,
           moment().startOf('day').toDate(),
@@ -240,12 +244,11 @@ export class AdminDashboardService {
         });
         result.items[numberV];
 
-        const paymentScheduleItems: IPaymentScheduleItem[] =
-          paymentManagement1.paymentSchedule.filter(
-            (scheduleItem) =>
-              moment(scheduleItem.date).startOf('day').isBefore(today) &&
-              scheduleItem.status === 'opened',
-          );
+        const paymentScheduleItems: IPaymentScheduleItem[] = paymentManagement1.paymentSchedule.filter(
+          (scheduleItem) =>
+            moment(scheduleItem.date).startOf('day').isBefore(today) &&
+            scheduleItem.status === 'opened',
+        );
         if (!paymentScheduleItems || paymentScheduleItems.length <= 0) {
         } else {
           const furthestLatePayment = paymentScheduleItems[0];
@@ -272,9 +275,19 @@ export class AdminDashboardService {
     return result;
   }
 
-  async updateUserData(payload: any) {
-    const { screenTrackingId, secondaryEmail, phoneNumber, phoneNumberType } =
-      payload;
+  async updateUserData(
+    payload: any,
+    request: { id: string; userName: string; email: string; role: string },
+  ) {
+    const {
+      screenTrackingId,
+      secondaryEmail,
+      phoneNumber,
+      phoneNumberType,
+      name,
+      firstName,
+      lastName,
+    } = payload;
 
     const screenData = await this.ScreenTrackingModel.findById(screenTrackingId)
       .populate('user')
@@ -328,12 +341,43 @@ export class AdminDashboardService {
       payload.phones = [...userdata.phones];
       payload.phones.push({ phone: phoneNumber, type: phoneNumberType });
     }
-
-    delete payload.screenTrackingId;
-    await this.userModel.updateOne({ _id: userdata._id }, payload);
+    let descriptionMessage = null;
+    if (request.role === Role.UserServicing && name) {
+      const approvalPayload = {
+        email: request.email,
+        agent: request.id,
+        user: userdata._id,
+        fieldToUpdate: [
+          { key: 'firstName', value: firstName },
+          { key: 'lastName', value: lastName },
+        ],
+        description: `${request.email} requested to change the name from ${userdata.firstName} ${userdata.lastName} to ${name}`,
+        currentValue: [
+          { key: 'firstName', value: userdata.firstName },
+          { key: 'lastName', value: userdata.lastName },
+        ],
+        collectionName: CollectionName.USER_COLLECTION,
+        screenTracking: screenTrackingId,
+      };
+      const response = await this.adminApprovalService.createApprovalRequest(
+        approvalPayload,
+      );
+      descriptionMessage = approvalPayload.description;
+      if (!response.ok) {
+        return { message: 'Something Went Wrong' };
+      }
+      return {
+        message: 'Request has been sent to update the Info',
+        descriptionMessage,
+      };
+    } else {
+      delete payload.screenTrackingId;
+      await this.userModel.updateOne({ _id: userdata._id }, payload);
+    }
 
     return {
       message: 'Info Updated Successfully',
+      descriptionMessage: `changed the name from ${userdata.firstName} ${userdata.lastName} to ${name}`,
     };
   }
 
@@ -458,8 +502,9 @@ export class AdminDashboardService {
     //   ? 0
     //   : paymentmanagementData[0].expired.length;
 
-    const paymentManagements: PaymentManagementDocument[] =
-      await this.PaymentManagementModel.find({});
+    const paymentManagements: PaymentManagementDocument[] = await this.PaymentManagementModel.find(
+      {},
+    );
     for (const paymentManagement of paymentManagements) {
       if (
         paymentManagement.status == 'expired' ||
@@ -539,27 +584,31 @@ export class AdminDashboardService {
     }
 
     const user: UserDocument = screenTrackingDocument.user as UserDocument;
-    const PracticeManagementDocument: PaymentManagement =
-      await this.PaymentManagementModel.findOne({
+    const PracticeManagementDocument: PaymentManagement = await this.PaymentManagementModel.findOne(
+      {
         user: user._id,
-      });
+      },
+    );
 
     let ricSignature: string | undefined;
-    const esignature: EsignatureDocument | null =
-      await this.esignatureModel.findOne({ user });
+    const esignature: EsignatureDocument | null = await this.esignatureModel.findOne(
+      { user },
+    );
     if (esignature) {
       const signature = await this.s3Service.downloadFile(
         esignature.signaturePath,
         requestId,
       );
-      ricSignature = `data:${signature.ContentType
-        };base64,${signature.Body.toString('base64')}`;
+      ricSignature = `data:${
+        signature.ContentType
+      };base64,${signature.Body.toString('base64')}`;
     }
 
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.PaymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+      {
         screenTracking: screenTrackingId,
-      });
+      },
+    );
 
     let collectionAdmin = 'Unassigned';
     let collectionEmail = '';
@@ -727,7 +776,7 @@ export class AdminDashboardService {
     return response;
   }
 
-  async getClarityReport(screenTrackingId: string, requestId: string) { }
+  async getClarityReport(screenTrackingId: string, requestId: string) {}
 
   async queryApplicationsByStatus(
     matchCriteria: Record<string, any>,
@@ -779,12 +828,14 @@ export class AdminDashboardService {
   }
 
   async getPaymentSchedule(screenTrackingId: string, requestId: string) {
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.PaymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+      {
         screenTracking: screenTrackingId,
-      });
-    const screenTracking: ScreenTrackingDocument | null =
-      await this.ScreenTrackingModel.findById(screenTrackingId);
+      },
+    );
+    const screenTracking: ScreenTrackingDocument | null = await this.ScreenTrackingModel.findById(
+      screenTrackingId,
+    );
     if (!paymentManagement) {
       this.logger.log(
         'Payment schedule not found',
@@ -871,10 +922,11 @@ export class AdminDashboardService {
     requestId: string,
   ) {
     const { screenTracking, amount } = changePaymentAmountDto;
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.PaymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+      {
         screenTracking,
-      });
+      },
+    );
     if (!paymentManagement) {
       this.logger.log(
         'Payment schedule not found',
@@ -932,10 +984,11 @@ export class AdminDashboardService {
     requestId: string,
   ) {
     const { screenTracking, amount } = changePaymentAmountDto;
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.PaymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+      {
         screenTracking,
-      });
+      },
+    );
     if (!paymentManagement) {
       this.logger.log(
         'Payment schedule not found',
@@ -995,31 +1048,47 @@ export class AdminDashboardService {
       data: string;
       dataType: 'string' | 'currency';
     }[] = [
-        {
-          data: 'user.firstName',
-          dataType: 'string',
-        },
-        {
-          data: 'user.lastName',
-          dataType: 'string',
-        },
-        {
-          data: 'user.phones.0.phone',
-          dataType: 'string',
-        },
-        {
-          data: 'user.email',
-          dataType: 'string',
-        },
-        {
-          data: 'practiceManagement.location',
-          dataType: 'string',
-        },
-        {
-          data: 'screenTracking.lastLevel',
-          dataType: 'string',
-        },
-      ];
+      {
+        data: 'user.firstName',
+        dataType: 'string',
+      },
+      {
+        data: 'user.lastName',
+        dataType: 'string',
+      },
+      {
+        data: 'user.phones.0.phone',
+        dataType: 'string',
+      },
+      {
+        data: 'user.email',
+        dataType: 'string',
+      },
+      {
+        data: 'practiceManagement.location',
+        dataType: 'string',
+      },
+      {
+        data: 'loanReference',
+        dataType: 'string',
+      },
+      {
+        data: 'screenTracking.lastLevel',
+        dataType: 'string',
+      },
+      {
+        data: 'practiceManagement.location',
+        dataType: 'string',
+      },
+      {
+        data: 'user.userReference',
+        dataType: 'string',
+      },
+      {
+        data: 'screenTracking.applicationReference',
+        dataType: 'string',
+      },
+    ];
 
     if (status !== 'denied') {
       dataFields.push(
@@ -1156,10 +1225,11 @@ export class AdminDashboardService {
   // }
 
   async forgivePayment(screenTrackingId: string, requestId: string) {
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.PaymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+      {
         screenTracking: screenTrackingId,
-      });
+      },
+    );
     if (!paymentManagement) {
       this.logger.log(
         'Payment schedule not found',
@@ -1199,17 +1269,19 @@ export class AdminDashboardService {
         scheduleItem.transId = '';
       }
     });
-    const PaymentManagement: PaymentManagementDocument =
-      new this.PaymentManagementModel(paymentManagement);
+    const PaymentManagement: PaymentManagementDocument = new this.PaymentManagementModel(
+      paymentManagement,
+    );
     await PaymentManagement.save();
     return paymentManagement;
   }
 
   async forgiveLatefee(screenTrackingId: string, requestId: string) {
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.PaymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+      {
         screenTracking: screenTrackingId,
-      });
+      },
+    );
     if (!paymentManagement) {
       this.logger.log(
         'Payment schedule not found',
@@ -1230,8 +1302,9 @@ export class AdminDashboardService {
         scheduleItem.fees = 0;
       }
     });
-    const PaymentManagement: PaymentManagementDocument =
-      new this.PaymentManagementModel(paymentManagement);
+    const PaymentManagement: PaymentManagementDocument = new this.PaymentManagementModel(
+      paymentManagement,
+    );
     await PaymentManagement.save();
     return PaymentManagement;
   }
@@ -1241,10 +1314,11 @@ export class AdminDashboardService {
     requestId: string,
     transactionId: string,
   ) {
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.PaymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+      {
         screenTracking: screenTrackingId,
-      });
+      },
+    );
 
     if (!paymentManagement) {
       this.logger.log(
@@ -1269,17 +1343,19 @@ export class AdminDashboardService {
       }
     });
 
-    const PaymentManagement: PaymentManagementDocument =
-      new this.PaymentManagementModel(paymentManagement);
+    const PaymentManagement: PaymentManagementDocument = new this.PaymentManagementModel(
+      paymentManagement,
+    );
     await PaymentManagement.save();
     return PaymentManagement;
   }
 
   async deferPayment(screenTrackingId: string, requestId: string) {
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.PaymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+      {
         screenTracking: screenTrackingId,
-      });
+      },
+    );
     if (!paymentManagement) {
       this.logger.log(
         'Payment schedule not found',
@@ -1295,10 +1371,9 @@ export class AdminDashboardService {
       );
     }
 
-    const paymentScheduleItems: IPaymentScheduleItem[] =
-      paymentManagement.paymentSchedule.filter(
-        (scheduleItem) => scheduleItem.status === 'opened',
-      );
+    const paymentScheduleItems: IPaymentScheduleItem[] = paymentManagement.paymentSchedule.filter(
+      (scheduleItem) => scheduleItem.status === 'opened',
+    );
     paymentScheduleItems.forEach(
       (scheduleItem, index, paymentScheduleItems) => {
         if (index + 1 < paymentScheduleItems.length) {

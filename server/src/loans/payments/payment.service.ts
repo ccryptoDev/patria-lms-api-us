@@ -714,7 +714,7 @@ export class PaymentService {
   ) {
     try {
       //console.log('PSK Payment Success');
-      const baseUrl = this.configService.get<string>('baseUrl');
+      const baseUrl = this.configService.get<string>('VUE_APP_URL');
       const html = await this.nunjucksService.htmlToString(
         'emails/application-paymentsuccess.html',
         {
@@ -749,7 +749,7 @@ export class PaymentService {
   async paymentFailure(user: User, amount: number, message: string) {
     try {
       //console.log('PSK Payment Success', amount);
-      const baseUrl = this.configService.get<string>('baseUrl');
+      const baseUrl = this.configService.get<string>('VUE_APP_URL');
       const html = await this.nunjucksService.htmlToString(
         'emails/application-paymentfailure.html',
         {

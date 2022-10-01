@@ -13,7 +13,7 @@ import {
   UseGuards,
   ValidationPipe,
 } from '@nestjs/common';
-import { Request } from 'express';
+import { Request, response } from 'express';
 import { Model } from 'mongoose';
 import moment from 'moment';
 
@@ -142,8 +142,34 @@ export class AdminDashboardController {
   @Put('loans/userInfo')
   @Roles(Role.SuperAdmin, Role.UserServicing)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  async updateUserData(@Body() payload: any) {
-    const result = await this.adminDashboardService.updateUserData(payload);
+  async updateUserData(
+    @Req() request: Request & { user: AdminJwtPayload },
+    @Body() payload: any,
+  ) {
+    const { id, userName, email, role, practiceManagement } = request.user;
+    const screenTrackingId = payload.screenTrackingId;
+
+    const result = await this.adminDashboardService.updateUserData(
+      payload,
+      request.user,
+    );
+    await this.logActivityService.createLogActivity(
+      request,
+      logActivityModuleNames.ACCOUNTS,
+      `${request.user.email} - ${role} \n ${result.descriptionMessage}`,
+      {
+        id,
+        email,
+        role,
+        userName,
+        practiceManagementId: practiceManagement,
+        screenTrackingId: screenTrackingId,
+      },
+      undefined,
+      undefined,
+      screenTrackingId,
+    );
+
     return result;
   }
 
@@ -517,12 +543,30 @@ export class AdminDashboardController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   async getPaymentSchedule(
     @Param('screenTrackingId') screenTrackingId: string,
-    @Req() request: Request,
+    @Req() request: Request & { user: AdminJwtPayload },
   ) {
     try {
       const response = await this.adminDashboardService.getPaymentSchedule(
         screenTrackingId,
         request.id,
+      );
+
+      const { id, userName, email, role, practiceManagement } = request.user;
+      await this.logActivityService.createLogActivity(
+        request,
+        logActivityModuleNames.ACCOUNTS,
+        `${request.user.email} - ${role} viewing the Payment Schedule`,
+        {
+          id,
+          email,
+          role,
+          userName,
+          practiceManagementId: practiceManagement,
+          screenTrackingId,
+        },
+        undefined,
+        undefined,
+        screenTrackingId,
       );
 
       this.logger.log(
@@ -546,7 +590,7 @@ export class AdminDashboardController {
   @Roles(Role.SuperAdmin, Role.UserServicing)
   @UseGuards(JwtAuthGuard, RolesGuard)
   async addBankAccount(
-    @Req() request,
+    @Req() request: Request & { user: AdminJwtPayload },
     @Param('screenTrackingId') screenTrackingId: string,
     @Body() body,
   ) {
@@ -556,7 +600,30 @@ export class AdminDashboardController {
       body,
     );
 
-    return this.userBankAccountService.createUserBankAccount(payload);
+    const response: any =
+      await this.userBankAccountService.createUserBankAccount(payload);
+
+    const { id, userName, email, role, practiceManagement } = request.user;
+
+    await this.logActivityService.createLogActivity(
+      request,
+      logActivityModuleNames.PAYMENT_SCHEDULE,
+      `${email} - ${role} added the account        
+        ${response?.data?.applicationReference}`,
+      {
+        id,
+        email,
+        role,
+        userName,
+        adminPracticeManagementId: practiceManagement,
+        screentrackingId: payload.screenTrackingId,
+      },
+      response?.data?.applicationReference,
+      undefined,
+      screenTrackingId,
+    );
+
+    return response;
   }
 
   @Get('users/bank-accounts/:screenTrackingId')
@@ -567,10 +634,30 @@ export class AdminDashboardController {
     @Param('screenTrackingId') screenTrackingId,
   ) {
     const user = request.user;
-    return this.userBankAccountService.listUserAccounts(
+    const response: any = await this.userBankAccountService.listUserAccounts(
       user.id,
       screenTrackingId,
     );
+    const { id, userName, email, role, practiceManagement } = request.user;
+
+    await this.logActivityService.createLogActivity(
+      request,
+      logActivityModuleNames.PAYMENT_SCHEDULE,
+      `${email} - ${role} viewing the Accounts`,
+      {
+        id,
+        email,
+        role,
+        userName,
+        adminPracticeManagementId: practiceManagement,
+        screentrackingId: screenTrackingId,
+      },
+      response?.data?.applicationReference,
+      undefined,
+      screenTrackingId,
+    );
+
+    return response;
   }
 
   @Post('users/cards/:screenTrackingId')
@@ -594,31 +681,34 @@ export class AdminDashboardController {
         addCardDto,
         request.id,
       );
-      const { id, userName, email, role, practiceManagement } = request.user;
-      await this.logActivityService.createLogActivity(
-        request,
-        logActivityModuleNames.ACCOUNTS,
-        `${request.user.email} - ${role} Added card id ${response?.data?._id}. Card Holder is ${response?.data?.cardNumberLastFour}`,
-        {
-          id,
-          email,
-          role,
-          userName,
-          practiceManagementId: practiceManagement,
-          screenTrackingId,
-          userId: response?.data?.user,
-          cardId: response?.data?._id,
-        },
-        undefined,
-        undefined,
-        screenTrackingId,
-      );
 
-      this.logger.log(
-        'Response status 201:',
-        `${AdminDashboardController.name}#addLoanPaymentProCard`,
-        request.id,
-      );
+      if (response) {
+        const { id, userName, email, role, practiceManagement } = request.user;
+        await this.logActivityService.createLogActivity(
+          request,
+          logActivityModuleNames.ACCOUNTS,
+          `${request.user.email} - ${role} Added card id ${response?.data?._id}. Card Holder is ${response?.data?.cardNumberLastFour}`,
+          {
+            id,
+            email,
+            role,
+            userName,
+            practiceManagementId: practiceManagement,
+            screenTrackingId,
+            userId: response?.data?.user,
+            cardId: response?.data?._id,
+          },
+          undefined,
+          undefined,
+          screenTrackingId,
+        );
+
+        this.logger.log(
+          'Response status 201:',
+          `${AdminDashboardController.name}#addLoanPaymentProCard`,
+          request.id,
+        );
+      }
 
       return response;
     } catch (error) {

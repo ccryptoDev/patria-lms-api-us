@@ -46,10 +46,6 @@ export class PaymentController {
   @UseGuards(JwtAuthGuard)
   @Post('test/automaticPayment')
   async runAutomaticPayments() {
-    if (process.env.NODE_ENV === 'production') {
-      throw new ForbiddenException();
-    }
-
     try {
       await this.paymentCronService.makeAutomaticPayment();
     } catch (error) {

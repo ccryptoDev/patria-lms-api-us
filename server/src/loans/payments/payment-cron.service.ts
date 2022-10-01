@@ -30,7 +30,7 @@ export class PaymentCronService {
     private readonly logger: LoggerService,
   ) {}
   //EVERY_MINUTE
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_DAY_AT_8PM) // 1pm PDT
   async makeAutomaticPayment() {
     const today: Date = moment().startOf('day').toDate();
     this.logger.log(
@@ -43,20 +43,22 @@ export class PaymentCronService {
 
     try {
       // check for payments due today
-      const paymentManagements: PaymentManagementDocument[] | null =
-        await this.paymentManagementModel.find({
-          status: {
-            $in: [
-              'in-repayment prime',
-              'in-repayment non-prime',
-              'in-repayment delinquent1',
-              'in-repayment delinquent2',
-              'in-repayment delinquent3',
-              'in-repayment delinquent4',
-            ],
-          },
-          canRunAutomaticPayment: true,
-        });
+      const paymentManagements:
+        | PaymentManagementDocument[]
+        | null = await this.paymentManagementModel.find({
+        status: {
+          $in: [
+            'in-repayment',
+            'in-repayment prime',
+            'in-repayment non-prime',
+            'in-repayment delinquent1',
+            'in-repayment delinquent2',
+            'in-repayment delinquent3',
+            'in-repayment delinquent4',
+          ],
+        },
+        canRunAutomaticPayment: true,
+      });
       if (!paymentManagements || paymentManagements.length <= 0) {
         this.logger.log(
           'No active loans found',
@@ -70,31 +72,28 @@ export class PaymentCronService {
           // get default card token
           paymentManagementId = paymentManagement._id;
           const user = paymentManagement.user as UserDocument;
-          let cardToken = await this.loanPaymentProCardTokenModel.findOne({
+          const cardToken = await this.loanPaymentProCardTokenModel.findOne({
             user,
-            isDefault: true,
+            paymentType: 'ACH',
+            // isDefault: true,
           });
 
           if (!cardToken) {
-            cardToken = await this.loanPaymentProCardTokenModel.findOne({
-              user,
-            });
-            if (!cardToken) {
-              this.logger.error(
-                `Payment method token for user id ${user._id} not found`,
-                `${PaymentService.name}#makeAutomaticPayment`,
-              );
-              continue;
-            }
+            this.logger.error(
+              `Payment method token for user id ${user._id} not found`,
+              `${PaymentService.name}#makeAutomaticPayment`,
+            );
+            continue;
           }
 
           // find schedule items
-          const paymentScheduleItems: IPaymentScheduleItem[] =
-            paymentManagement.paymentSchedule.filter(
-              (scheduleItem) =>
-                moment(scheduleItem.date).startOf('day').isSame(today) &&
-                scheduleItem.status === 'opened',
-            );
+          const paymentScheduleItems: IPaymentScheduleItem[] = paymentManagement.paymentSchedule.filter(
+            (scheduleItem) =>
+              moment(scheduleItem.date)
+                .subtract(1, 'day') // allowing ACH to run end of previous day
+                .startOf('day')
+                .isSame(today) && ['opened'].includes(scheduleItem.status),
+          );
           if (!paymentScheduleItems || paymentScheduleItems.length <= 0) {
             continue;
           }
@@ -115,12 +114,11 @@ export class PaymentCronService {
             const paymentAmount = paymentScheduleItem.week
               ? paymentManagement.currentPaymentAmount
               : paymentScheduleItem.amount;
-            const payment: PaymentDocument =
-              await this.paymentService.makePayment(
-                paymentManagement,
-                cardToken.paymentMethodToken,
-                paymentAmount,
-              );
+            const payment: PaymentDocument = await this.paymentService.makePayment(
+              paymentManagement,
+              cardToken.paymentMethodToken,
+              paymentAmount,
+            );
             paymentScheduleItem.payment = paymentAmount;
             paymentScheduleItem.paidInterest = paymentScheduleItem.interest;
             paymentScheduleItem.paidPrincipal = paymentScheduleItem.principal;
@@ -141,10 +139,9 @@ export class PaymentCronService {
             };
 
             // find next payment date
-            const nextPaymentScheduleItem: IPaymentScheduleItem =
-              paymentManagement.paymentSchedule.find(
-                (scheduleItem) => scheduleItem.status === 'opened',
-              );
+            const nextPaymentScheduleItem: IPaymentScheduleItem = paymentManagement.paymentSchedule.find(
+              (scheduleItem) => scheduleItem.status === 'opened',
+            );
             if (nextPaymentScheduleItem) {
               updatedPaymentManagement.nextPaymentSchedule =
                 nextPaymentScheduleItem.date;
@@ -267,10 +264,11 @@ export class PaymentCronService {
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async checkAndProcessCollectionContracts() {
-    const paymentManagements: PaymentManagementDocument[] | null =
-      await this.paymentManagementModel.find({
-        collectionsAccountStatus: 'PROMISE_TO_PAY',
-      });
+    const paymentManagements:
+      | PaymentManagementDocument[]
+      | null = await this.paymentManagementModel.find({
+      collectionsAccountStatus: 'PROMISE_TO_PAY',
+    });
     if (paymentManagements && paymentManagements.length > 0) {
       for (const paymentManagement of paymentManagements) {
         this.checkPromiseToPay(paymentManagement);

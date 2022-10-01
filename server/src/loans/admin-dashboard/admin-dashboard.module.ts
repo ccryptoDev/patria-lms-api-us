@@ -43,6 +43,8 @@ import { TransunionService } from '../underwriting/transunion/transunion.service
 import { AuthService } from '../../user/auth/auth.service';
 import { JwtModule } from '@nestjs/jwt';
 import { secret } from '../../user/auth/auth.config';
+import { AdminApprovalService } from '../../../src/user/admin/approvals/approval.service';
+import { AdminApprovalModule } from '../../../src/user/admin/approvals/approval.module';
 
 @Module({
   imports: [
@@ -69,6 +71,7 @@ import { secret } from '../../user/auth/auth.config';
     EmploymentHistoryModule,
     UserBankAccountModule,
     TransunionModule,
+    AdminApprovalModule,
     JwtModule.register({
       secret,
       signOptions: { expiresIn: '1d' },
@@ -94,6 +97,7 @@ import { secret } from '../../user/auth/auth.config';
     UserBankAccountService,
     TransunionService,
     AuthService,
+    AdminApprovalService,
   ],
   exports: [EmploymentHistoryModule],
 })
