@@ -33,8 +33,8 @@ export class AdminService {
   constructor(
     @InjectModel(Admin.name) private readonly adminModel: Model<AdminDocument>,
     @InjectModel(Roles.name) private readonly rolesModel: Model<RolesDocument>,
-    @InjectModel(PracticeManagement.name)
-    private readonly practiceManagementModel: Model<PracticeManagementDocument>,
+    // @InjectModel(PracticeManagement.name)
+    // private readonly practiceManagementModel: Model<PracticeManagementDocument>,
     private readonly nunjucksService: NunjucksCompilerService,
     private readonly mandrillService: MandrillService,
     private readonly databaseSearchService: DatabaseSearchService,
@@ -44,8 +44,7 @@ export class AdminService {
   ) { }
 
   async createAdmin(createAdminDto: CreateAdminDto, requestId: string) {
-    const { userName, email, phoneNumber, role, password } =
-      createAdminDto;
+    const { userName, email, phoneNumber, role, password } = createAdminDto;
     this.logger.log(
       'Creating admin user with params:',
       `${AdminService.name}#createNewUser`,

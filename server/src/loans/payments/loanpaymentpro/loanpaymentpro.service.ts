@@ -212,9 +212,9 @@ export class LoanpaymentproService {
         this.appService.errorHandler(404, errorMessage, requestId),
       );
     }
-    const cardNumberLastFour = addCardDto.cardNumber.substr(-4);
+    // const cardNumberLastFour = addCardDto.cardNumber.substr(-4);
     const isExistingCard = await this.loanPaymentProCardTokenModel.findOne({
-      cardNumberLastFour,
+      cardNumberLastFour: addCardDto.cardNumber,
       cardCode,
       expMonth,
       expYear,
@@ -223,14 +223,15 @@ export class LoanpaymentproService {
 
     if (isExistingCard) {
       errorMessage = 'This card has already been added';
-      this.logger.error(
+      this.logger.log(
         errorMessage,
         `${LoanpaymentproService.name}#v2PaymentCardsAdd`,
         requestId,
       );
-      throw new BadRequestException(
-        this.appService.errorHandler(400, errorMessage, requestId),
-      );
+      return null;
+      // throw new BadRequestException(
+      //   this.appService.errorHandler(400, errorMessage, requestId),
+      // );
     }
     const accessTokenResult = await this.flexPayService.getAccessToken();
     if (!accessTokenResult.ok) {
@@ -238,21 +239,21 @@ export class LoanpaymentproService {
         this.appService.errorHandler(400, accessTokenResult.error, requestId),
       );
     }
-    const { access_token } = accessTokenResult.data;
-    const tokenizationResult = await this.flexPayService.createTokenization(
-      screenTrackingDocument,
-      addCardDto,
-      access_token,
-    );
-    if (!tokenizationResult.ok) {
-      const Message = tokenizationResult.error;
-      throw new BadRequestException({
-        statusCode: 400,
-        message: Message,
-        requestId,
-      });
-    }
-    const { data } = tokenizationResult;
+    // const { access_token } = accessTokenResult.data;
+    // const tokenizationResult = await this.flexPayService.createTokenization(
+    //   screenTrackingDocument,
+    //   addCardDto,
+    //   access_token,
+    // );
+    // if (!tokenizationResult.ok) {
+    //   const Message = tokenizationResult.error;
+    //   throw new BadRequestException({
+    //     statusCode: 400,
+    //     message: Message,
+    //     requestId,
+    //   });
+    // }
+    // const { data } = tokenizationResult;
     // //Search for the user's cards and make the previous cards to "isDefault: false"
     await this.loanPaymentProCardTokenModel.findOneAndUpdate(
       {
@@ -268,9 +269,10 @@ export class LoanpaymentproService {
 
     const cardToken = await this.loanPaymentProCardTokenModel.create({
       ...addCardDto,
-      cardNumberLastFour,
-      customerToken: data.yourReferenceNumber,
-      paymentMethodToken: data.tokenId,
+      nameOnCard: nameOnCard || `${user.firstName} ${user.lastName}`,
+      cardNumberLastFour: addCardDto.cardNumber,
+      // customerToken: data.yourReferenceNumber,
+      // paymentMethodToken: data.tokenId,
       user: user._id,
     } as any);
 
@@ -324,9 +326,10 @@ export class LoanpaymentproService {
         `${LoanpaymentproService.name}#v2PaymentCardsAdd`,
         requestId,
       );
-      throw new BadRequestException(
-        this.appService.errorHandler(400, errorMessage, requestId),
-      );
+      return null;
+      // throw new BadRequestException(
+      //   this.appService.errorHandler(400, errorMessage, requestId),
+      // );
     }
     const accessTokenResult = await this.flexPayService.getAccessToken();
     if (!accessTokenResult.ok) {

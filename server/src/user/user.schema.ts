@@ -5,6 +5,7 @@ import { PracticeManagementDocument } from '../loans/practice-management/practic
 import { RolesDocument } from './roles/roles.schema';
 import { StateDocument } from './state/state.schema';
 import { ScreenTrackingDocument } from './screen-tracking/screen-tracking.schema';
+import { AdminApprovalDocument } from './admin/approvals/approval.schema';
 
 export type UserDocument = User & Document;
 
@@ -40,6 +41,9 @@ export class User {
 
   @Prop({ required: true })
   firstName: string;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'AdminApproval' })
+  adminApproval: string | AdminApprovalDocument;
 
   @Prop()
   isDeleted: boolean;

@@ -122,11 +122,9 @@ export class PaymentManagementService {
       selectedOffer.financedAmount + (selectedOffer.downPayment || 0);
     const promoSelected = selectedOffer.promoSelected;
     const apr = promoSelected ? selectedOffer.apr : selectedOffer.apr;
-    const maturityDate = moment(
-      this.getFirstPaymentDate(selectedOffer.loanStartDate),
-    )
+    const maturityDate = moment(this.getFirstPaymentDate(moment().toDate()))
       .startOf('day')
-      .add(selectedOffer.term, 'weeks')
+      .add(Math.floor(selectedOffer.term * 4.34524) - 1, 'weeks')
       .toDate();
     selectedOffer.firstPaymentDate = this.getFirstPaymentDate(
       selectedOffer.loanStartDate,
@@ -177,7 +175,7 @@ export class PaymentManagementService {
       promoStatus: 'available',
       promoTermCount: selectedOffer.promoTerm,
       screenTracking: screenTracking._id,
-      status: 'in-repayment prime',
+      status: 'pending',
       user: screenTracking.user,
     };
     this.logger.log(
@@ -327,6 +325,12 @@ export class PaymentManagementService {
           },
         },
       );
+
+      await this.paymentManagementModel.updateOne(
+        { screenTracking: screenTrackingId },
+        { status: 'in-repayment' },
+      );
+
       this.logger.log(
         disbursementResponse,
         'disbursePaymentToUser#disbursePaymentToUser',

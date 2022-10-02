@@ -693,7 +693,7 @@ export class TransunionService {
       screenTracking,
       success: true,
       transUnionHistory,
-      transUnions: transUnions, 
+      transUnions: transUnions,
     };
   }
 

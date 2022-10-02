@@ -29,16 +29,18 @@ import { ScreenTrackingService } from '../../../user/screen-tracking/screen-trac
 export class LoanpaymentproController {
   constructor(
     @InjectModel(ScreenTracking.name)
+    private readonly screenTrackingModel: Model<ScreenTrackingDocument>,
     private readonly screenTrackingService: ScreenTrackingService,
     private readonly loanPaymentProService: LoanpaymentproService,
     private readonly logger: LoggerService,
-  ) { }
+  ) {}
 
   @Post('application/addCard')
   @UsePipes(new ValidationPipe())
   async addCard(@Body() addCardDto: AddCardDto, @Req() request: Request) {
-    const user = request?.user?.id;
+    const sc = request?.body?.screenTrackingId;
     try {
+      addCardDto.billingZip = addCardDto.billingZip.slice(0, 5);
       // eslint-disable-next-line prefer-const
       let response: any = null;
       if (addCardDto.paymentType === 'CARD') {
@@ -114,10 +116,9 @@ export class LoanpaymentproController {
   async testingCard(@Body() payload: any, @Req() request: Request) {
     const { screenTrackingId } = payload;
     try {
-      const response: LoanPaymentProCardTokenDocument =
-        await this.loanPaymentProService.testingPaymentService(
-          screenTrackingId,
-        );
+      const response: LoanPaymentProCardTokenDocument = await this.loanPaymentProService.testingPaymentService(
+        screenTrackingId,
+      );
 
       return response;
     } catch (error) {

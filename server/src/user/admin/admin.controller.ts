@@ -45,7 +45,6 @@ export class AdminController {
     @Body() createUserDto: CreateAdminDto,
     @Req() request: Request & { user: AdminJwtPayload },
   ) {
-    
     try {
       const response = await this.adminService.createAdmin(
         createUserDto,

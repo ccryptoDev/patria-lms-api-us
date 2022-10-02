@@ -1,6 +1,6 @@
 import AWS from 'aws-sdk';
 
-let Bucket = 'patria-staging';
+let Bucket = 'alchemylms-staging';
 const clientConfig: AWS.S3.ClientConfiguration = {
   accessKeyId: 'AKIAYNEOQTI4FD65UGWW',
   apiVersion: '2006-03-01',

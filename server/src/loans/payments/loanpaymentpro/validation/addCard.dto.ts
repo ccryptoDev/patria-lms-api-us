@@ -32,8 +32,7 @@ export class AddCardDto {
   billingState: string;
 
   @IsNotEmpty()
-  @IsNumberString({ no_symbols: true })
-  @Length(5, 5)
+  @Length(5)
   billingZip: string;
 
   @IsOptional()

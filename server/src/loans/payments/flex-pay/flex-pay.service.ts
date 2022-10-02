@@ -125,8 +125,8 @@ export class FlexPayService {
       } else {
         const flexAccountType = accountType.toLowerCase();
         payload['bankAccountData'] = {
-          bankRoutingNumber: '000000000',
-          bankAccountNumber: '000000',
+          bankRoutingNumber: routingNumber,
+          bankAccountNumber: accountNumber,
           bankAccountType:
             flexAccountType === 'saving'
               ? `${flexAccountType}s`
@@ -291,10 +291,13 @@ export class FlexPayService {
         .padStart(16, '0');
 
       const payload = {
-        tokenId: context.paymentMethodToken,
+        // tokenId: context.paymentMethodToken,
         yourSubClientId: String(screenTracking._id),
         amount: amount,
         yourReferenceNumber: referenceNumber,
+        nameOnCard: context.nameOnCard,
+        cardNumber: context.cardNumberLastFour,
+        cardExpiration: `${context.expMonth}/20${context.expYear}`,
       };
 
       const options: AxiosRequestConfig = {
@@ -353,7 +356,7 @@ export class FlexPayService {
     } catch (error) {
       this.logger.error(error, 'cardInstantTransaction#error', requestId);
       result.error = error;
-    } finally {
+    } finally { 
       return result;
     }
   }

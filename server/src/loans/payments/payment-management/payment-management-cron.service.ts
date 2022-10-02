@@ -328,7 +328,7 @@ export class PaymentManagementCronService {
               });
               tableString += '</tbody> </table>';
 
-              const baseUrl = this.configService.get<string>('baseUrl');
+              const baseUrl = this.configService.get<string>('VUE_APP_URL');
               const html = await this.nunjucksService.htmlToString(
                 'emails/application-delinquent.html',
                 {

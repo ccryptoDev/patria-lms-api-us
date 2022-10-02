@@ -29,7 +29,7 @@ import { DatabaseSearchService } from '../../database-search/database-search.ser
     MandrillModule,
     MongooseModule.forFeature([{ name: Admin.name, schema: AdminSchema }]),
     NunjucksCompilerModule,
-    PracticeManagementModule,
+    // PracticeManagementModule,
     RolesModule,
   ],
   controllers: [AdminController],
