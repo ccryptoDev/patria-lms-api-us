@@ -64,7 +64,7 @@ export class ApplicationController {
     private readonly consentService: ConsentService,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
-  ) { }
+  ) {}
 
   @Post('apply')
   async apply(
@@ -95,11 +95,10 @@ export class ApplicationController {
       );
 
       if (!user.screenTracking) {
-        const applicationReferenceData =
-          await this.countersService.getNextSequenceValue(
-            'application',
-            request.id,
-          );
+        const applicationReferenceData = await this.countersService.getNextSequenceValue(
+          'application',
+          request.id,
+        );
         const newScreenTracking = {
           user: user._id,
           applicationReference: `APL_${applicationReferenceData.sequenceValue}`,
@@ -118,8 +117,9 @@ export class ApplicationController {
           request.id,
           newScreenTracking,
         );
-        const screenTracking: ScreenTrackingDocument =
-          new this.screenTrackingModel(newScreenTracking);
+        const screenTracking: ScreenTrackingDocument = new this.screenTrackingModel(
+          newScreenTracking,
+        );
         await screenTracking.save();
         user.screenTracking = screenTracking._id;
         await user.save();
@@ -180,19 +180,28 @@ export class ApplicationController {
   }
 
   @Post('parsePdf')
-  async parsePdf(@Body() body: { html: string; screenId: string }) {
+  async parsePdf(
+    @Body() body: { html: string; screenId: string },
+    @Req() request: Request,
+  ) {
     // get a html
     const screenId = body.screenId;
     const fileName = screenId + '.pdf';
 
     const lambdaPayload = {
-      loan_id: 'stately',
+      loan_id: 'patria',
       html_content: body.html,
       filename: fileName,
     };
+
+    this.logger.log(
+      JSON.stringify(lambdaPayload, null, 4),
+      'parsePdf#lambdaPayload',
+      request.id,
+    );
     const response = await lambda
       .invoke({
-        FunctionName: 'getpdf-staging',
+        FunctionName: 'getpdf-patria',
         InvocationType: 'RequestResponse',
         Payload: JSON.stringify(lambdaPayload),
         LogType: 'Tail',
@@ -200,9 +209,28 @@ export class ApplicationController {
       .promise();
 
     const responseData = JSON.parse(response.Payload.toString());
+
+    this.logger.log(
+      JSON.stringify(responseData, null, 4),
+      'parsePdf#responseData',
+      request.id,
+    );
+
     if (responseData.statusCode != 200) throw new Error('Something Went Wrong');
 
     const bodyResponse = JSON.parse(responseData.body.toString());
+
+    this.logger.log(
+      JSON.stringify(
+        {
+          pdf: bodyResponse.Key,
+        },
+        null,
+        4,
+      ),
+      'parsePdf#Api response',
+      request.id,
+    );
     return {
       pdf: bodyResponse.Key,
     };
@@ -266,8 +294,13 @@ export class ApplicationController {
       if (process.env.NODE_ENV === 'production') {
         throw new ForbiddenException();
       }
-      const { apr, weeklyPayment, term, financedAmount, loanStartDate } =
-        payload;
+      const {
+        apr,
+        weeklyPayment,
+        term,
+        financedAmount,
+        loanStartDate,
+      } = payload;
 
       const testOffer = {
         apr: apr,

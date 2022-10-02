@@ -5,6 +5,7 @@ import { UserDocument } from '../user.schema';
 import { PracticeManagementDocument } from '../../loans/practice-management/practice-management.schema';
 import { TransUnionsDocument } from '../../loans/underwriting/transunion/schemas/transunions.schema';
 import { EsignatureDocument } from '../esignature/esignature.schema';
+import { AdminApprovalDocument } from '../admin/approvals/approval.schema';
 
 export type ScreenTrackingDocument = ScreenTracking & Document;
 export type OfferData = {
@@ -80,6 +81,9 @@ export class ScreenTracking {
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Esignature' })
   esignature: string | EsignatureDocument;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'AdminApproval' })
+  adminApproval: string | AdminApprovalDocument;
 
   @Prop()
   incomeAmount: number; // monthly salary

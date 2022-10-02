@@ -18,6 +18,8 @@ import { ConsentController } from './consent.controller';
 import { UserModule } from '../user.module';
 import { LoanpaymentproModule } from '../../loans/payments/loanpaymentpro/loanpaymentpro.module';
 import { EsignatureModule } from '../esignature/esignature.module';
+import { LogActivityModule } from '../log-activity/log-activity.module';
+import { LogActivityService } from '../log-activity/log-activity.service';
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -32,6 +34,7 @@ import { EsignatureModule } from '../esignature/esignature.module';
     forwardRef(() => PaymentManagementModule),
     NunjucksCompilerModule,
     forwardRef(() => UserModule),
+    LogActivityModule,
   ],
   providers: [
     ConsentService,
@@ -40,8 +43,9 @@ import { EsignatureModule } from '../esignature/esignature.module';
     NunjucksCompilerService,
     AppService,
     LoggerService,
+    LogActivityService,
   ],
-  exports: [MongooseModule],
+  exports: [MongooseModule, LogActivityService],
   controllers: [ConsentController],
 })
-export class ConsentModule {}
+export class ConsentModule { }

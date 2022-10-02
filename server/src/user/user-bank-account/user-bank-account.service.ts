@@ -32,15 +32,16 @@ export class UserBankAccountService {
 
     private readonly appService: AppService,
     private readonly loanPaymnetProService: LoanpaymentproService,
-  ) {}
+  ) { }
 
   async listUserAccounts(
     userId: string,
     screenTrackingId: string,
   ): Promise<UserBankAccountDocument[]> {
-    const screenTracking: ScreenTrackingDocument = await this.screenTrackingModel
-      .findById(screenTrackingId)
-      .populate('user');
+    const screenTracking: ScreenTrackingDocument =
+      await this.screenTrackingModel
+        .findById(screenTrackingId)
+        .populate('user');
     if (!screenTracking) {
       throw new NotFoundException(
         this.appService.errorHandler(
@@ -61,12 +62,11 @@ export class UserBankAccountService {
     }
 
     const user = screenTracking.user as UserDocument;
-    const cards:
-      | LoanPaymentProCardTokenDocument[]
-      | null = await this.loanPaymentProCardTokenModel.find({
-      user,
-      paymentType: 'ACH',
-    });
+    const cards: LoanPaymentProCardTokenDocument[] | null =
+      await this.loanPaymentProCardTokenModel.find({
+        user,
+        paymentType: 'ACH',
+      });
 
     // const userBankData: Array<any> = [];
     const userBankData = JSON.parse(JSON.stringify(cards)) as any[];

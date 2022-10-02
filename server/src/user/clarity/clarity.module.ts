@@ -6,6 +6,8 @@ import { ClarityService } from './clarity.service';
 import { ClarityResponse, ClarityResponseSchema } from './clarity.schema';
 import { UserModule } from '../user.module';
 import { ScreenTrackingModule } from '../screen-tracking/screen-tracking.module';
+import { LogActivityModule } from '../log-activity/log-activity.module';
+import { LogActivityService } from '../log-activity/log-activity.service';
 
 @Module({
   imports: [
@@ -14,9 +16,10 @@ import { ScreenTrackingModule } from '../screen-tracking/screen-tracking.module'
     ]),
     forwardRef(() => UserModule),
     ScreenTrackingModule,
+    LogActivityModule,
   ],
-  exports: [MongooseModule],
-  providers: [ClarityService, LoggerService],
+  exports: [MongooseModule, LogActivityModule],
+  providers: [ClarityService, LoggerService, LogActivityService],
   controllers: [ClarityController],
 })
-export class ClarityModule {}
+export class ClarityModule { }

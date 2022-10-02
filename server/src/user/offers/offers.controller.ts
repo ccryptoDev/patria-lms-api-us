@@ -131,9 +131,6 @@ export class OffersController {
     },
   ) {
     try {
-      if (process.env.NODE_ENV === 'production') {
-        throw new ForbiddenException();
-      }
       const { apr, term, financedAmount } = payload;
       return await this.offersService.calcMonthlyPayment(
         apr,

@@ -216,6 +216,10 @@ export class DashboardService {
       documents,
     );
 
+    paymentManagementData.paymentSchedule.forEach((payment) => {
+      payment.date = moment(payment.date).utc().toDate();
+    });
+
     const response = {
       name,
       address,

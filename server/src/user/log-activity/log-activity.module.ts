@@ -25,7 +25,7 @@ import { ScreenTrackingModule } from '../../user/screen-tracking/screen-tracking
     LogActivityService,
     LoggerService,
   ],
-  exports: [MongooseModule],
+  exports: [MongooseModule, CountersModule, DatabaseSearchModule],
   controllers: [LogActivityController],
 })
 export class LogActivityModule {}

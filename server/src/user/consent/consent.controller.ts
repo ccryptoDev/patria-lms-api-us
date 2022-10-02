@@ -2,6 +2,10 @@ import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
 import { Request } from 'express';
 
 import { LoggerService } from '../../logger/logger.service';
+import {
+  LogActivityService,
+  logActivityModuleNames,
+} from '../../user/log-activity/log-activity.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Role } from '../auth/roles/role.enum';
 import { Roles } from '../auth/roles/roles.decorator';
@@ -14,7 +18,8 @@ export class ConsentController {
   constructor(
     private readonly userConsentService: ConsentService,
     private readonly logger: LoggerService,
-  ) {}
+    private readonly logActivityService: LogActivityService,
+  ) { }
 
   @Get('admin/dashboard/users/consents/:screenTrackingId')
   @Roles(Role.SuperAdmin, Role.UserServicing)
@@ -28,6 +33,24 @@ export class ConsentController {
         screenTrackingId,
         request.user,
         request.id,
+      );
+
+      const { id, userName, email, role, practiceManagement } = request.user;
+      await this.logActivityService.createLogActivity(
+        request,
+        logActivityModuleNames.ACCOUNTS,
+        `${request.user.email} - ${role} viewing the Document Center`,
+        {
+          id,
+          email,
+          role,
+          userName,
+          practiceManagementId: practiceManagement,
+          screenTrackingId,
+        },
+        undefined,
+        undefined,
+        screenTrackingId,
       );
 
       this.logger.log(

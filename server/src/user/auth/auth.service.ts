@@ -631,7 +631,7 @@ export class AuthService {
     admin.password = await this.generateEncryptedPassword(newPassword);
     await admin.save();
 
-    const baseUrl = this.configService.get<string>('baseUrl');
+    const baseUrl = this.configService.get<string>('VUE_APP_URL');
     const html = await this.nunjucksService.htmlToString(
       'emails/admin-reset-password.html',
       {
