@@ -224,7 +224,7 @@ export default Vue.extend({
             ? false
             : true;
         if (!this.isValidAmount) {
-          this.error = `Amount must be higher than ${this.regularAmount} and lower than ${this.payoffAmount}`;
+          this.error = `Amount must be higher than $${Number(this.regularAmount).toFixed(2)} and lower than $${Number(this.payoffAmount).toFixed(2)}`;
         }
       } else {
         this.isValidAmount =
@@ -232,7 +232,7 @@ export default Vue.extend({
             ? false
             : true;
         if (!this.isValidAmount) {
-          this.error = `Amount must be higher than ${this.regularAmount} and lower than ${this.payoffAmount}`;
+          this.error = `Amount must be higher than $${Number(this.regularAmount).toFixed(2)} and lower than $${Number(this.payoffAmount).toFixed(2)}`;
         }
       }
     },

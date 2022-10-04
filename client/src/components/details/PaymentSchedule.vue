@@ -227,10 +227,28 @@
             <th>Unpaid Principal Balance</th>
             <th>Principal</th>
             <th>Interest</th>
-            <th>Fees</th>
+            <th>Late Fee</th>
+            <th>NSF Fee</th>
             <th>Amount</th>
             <th>Schedule Date</th>
-            <th>Action</th>
+            <th
+              v-if="
+                this.userData.role === 'Manager - LA' ||
+                this.userData.role === 'Super Admin' ||
+                this.userData.role === 'User - Servicing'
+              "
+            >
+              Forgive NSF Fee
+            </th>
+            <th
+              v-if="
+                this.userData.role === 'Manager - LA' ||
+                this.userData.role === 'Super Admin' ||
+                this.userData.role === 'User - Servicing'
+              "
+            >
+              Forgive Late Fee
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -244,24 +262,60 @@
             </td>
             <td>{{ paymentScheduleItem.interest | currency }}</td>
             <td>{{ paymentScheduleItem.fees | currency }}</td>
+            <td>
+              {{
+                paymentScheduleItem.nsfFee === undefined
+                  ? 0
+                  : paymentScheduleItem.nsfFee | currency
+              }}
+            </td>
             <td>{{ paymentScheduleItem.amount | currency }}</td>
             <td>{{ paymentScheduleItem.date | date }}</td>
-            <td v-if="
-              userData.role === adminRoles.UserServicing ||
-              userData.role === adminRoles.SuperAdmin ||
-              userData.role === 'User - Servicing'
-            ">
+           
+            <td
+              v-if="
+                userData.role === 'Manager - LA' ||
+                  userData.role === 'Super Admin' ||
+                  userData.role === 'User - Servicing'
+              "
+            >
               <div class="tooltipvue">
-                <button class="primary" style="margin-right: 10px; background-color: #ea4c89; color: white"
-                  @click="forgiveSingleLateFee(paymentScheduleItem)" v-if="
+                <button
+                  class="primary"
+                  style="margin-right: 10px; background-color: #ea4c89; color: white"
+                  @click="forgiveSingleNsfFee(paymentScheduleItem)"
+                  v-if="
                     paymentScheduleItem.status !== 'failed' &&
-                    paymentScheduleItem.fees !== 0
-                  ">
-                  Forgive late fee
-                  <span class="tooltiptextvue">Forgive Individual late fee</span>
+                      paymentScheduleItem.nsfFee !== 0 &&
+                      paymentScheduleItem.nsfFee !== undefined
+                  "
+                >
+                  Forgive NSF Fee
                 </button>
               </div>
             </td>
+            <td
+              v-if="
+                userData.role === 'Manager - LA' ||
+                  userData.role === 'Super Admin' ||
+                  userData.role === 'User - Servicing'
+              "
+            >
+              <div class="tooltipvue">
+                <button
+                  class="primary"
+                  style="margin-right: 10px; background-color: #ea4c89; color: white"
+                  @click="forgiveSingleLateFee(paymentScheduleItem)"
+                  v-if="
+                    paymentScheduleItem.status !== 'failed' &&
+                      paymentScheduleItem.fees !== 0
+                  "
+                >
+                  Forgive Late Fee
+                </button>
+              </div>
+            </td>
+
           </tr>
         </tbody>
       </table>
@@ -560,7 +614,7 @@ export default Vue.extend({
 
       try {
         const result = await this.$swal({
-          title: `Do you want to forgive Late fee with amount of ${payment.amount} on date ${finalDate}?`,
+          title: `Do you want to forgive Late fee with amount of $${Number(payment.amount).toFixed(2) } on date ${finalDate}?`,
           showCancelButton: true,
           icon: "info",
           reverseButtons: false,
@@ -583,6 +637,45 @@ export default Vue.extend({
         await this.$swal({
           title: "Alert",
           text: "Could not forgive Late fee",
+          icon: "error",
+        });
+      }
+    },
+    async forgiveSingleNsfFee(payment: any) {
+      const splitDate = payment.date
+        .toString()
+        .split("T")[0]
+        .split("-")
+        .reverse()
+        .join("/")
+        .split(/\//);
+      const finalDate = [splitDate[1], splitDate[0], splitDate[2]].join("/");
+
+      try {
+        const result = await this.$swal({
+          title: `Do you want to forgive NSF fee with amount of ${payment.amount} on date ${finalDate}?`,
+          showCancelButton: true,
+          icon: "info",
+          reverseButtons: false,
+          confirmButtonText: `Yes`,
+          cancelButtonText: `Cancel`,
+        });
+        if (result.isConfirmed) {
+          await adminDashboardRequests.forgiveSingleNsfFee(
+            this.screenTrackingId,
+            payment
+          );
+          await this.$swal({
+            title: "Alert",
+            text: "Success!",
+            icon: "success",
+          });
+        }
+        this.reloadPage();
+      } catch (error) {
+        await this.$swal({
+          title: "Alert",
+          text: "Could not forgive NSF fee",
           icon: "error",
         });
       }

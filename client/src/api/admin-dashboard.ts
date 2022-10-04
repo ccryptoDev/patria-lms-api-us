@@ -156,7 +156,7 @@ class AdminDashboardRequests {
       `/api/admin/dashboard/remove-accounts`, context
     );
 
-    return response;
+    return response;  
   }
 
   async updateUserData(context: any): Promise<AxiosResponse<any>> {
@@ -230,7 +230,7 @@ class AdminDashboardRequests {
 
   async submitPayment(
     screenTrackingId: string,
-    data: { paymentMethodToken: string; amount: number; paymentDate: Date }
+    data: { paymentMethodToken: string; amount: number; paymentDate: Date, paymentVia: string | null }
   ): Promise<AxiosResponse<any>> {
     const response = await getRequester().post(
       `api/admin/dashboard/loans/submitPayment/${screenTrackingId}`,
@@ -845,6 +845,17 @@ class AdminDashboardRequests {
     const response = await getRequester().post(
       `/api/admin/dashboard/loans/forgiveSingleLateFee/${screenTrackingId}`,
       payment
+    );
+
+    return response;
+  }
+
+  async forgiveSingleNsfFee(
+    screenTrackingId: string,
+    transactionId: string
+  ): Promise<AxiosResponse<any>> {
+    const response = await getRequester().post(
+      `/api/admin/dashboard/loans/forgiveSingleNsfFee/${screenTrackingId}/${transactionId}`
     );
 
     return response;

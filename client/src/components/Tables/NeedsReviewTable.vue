@@ -10,10 +10,10 @@
         Move out of collections
       </button> -->
     </div>
-    <DelinquentTemplate v-if="currentStatus === 'in-repayment delinquent1'" title="1-30 Day Delinquent" :rows="rows" />
-    <DelinquentTemplate v-if="currentStatus === 'in-repayment delinquent2'" title="31-60 Day Delinquent" :rows="rows" />
-    <DelinquentTemplate v-if="currentStatus === 'in-repayment delinquent3'" title="61-90 Day Delinquent" :rows="rows" />
-    <DelinquentTemplate v-if="currentStatus === 'in-repayment delinquent4'" title="90+ Day Delinquent" :rows="rows" />
+    <DelinquentTemplate v-if="currentStatus === 'in-repayment delinquent1'" title="1-4 Week Delinquent" :rows="rows" />
+    <DelinquentTemplate v-if="currentStatus === 'in-repayment delinquent2'" title="5-8 Week Delinquent" :rows="rows" />
+    <DelinquentTemplate v-if="currentStatus === 'in-repayment delinquent3'" title="9-12 Week Delinquent" :rows="rows" />
+    <DelinquentTemplate v-if="currentStatus === 'in-repayment delinquent4'" title="12 + Week Delinquent" :rows="rows" />
     <DelinquentTemplate v-if="currentStatus === 'all'" title="All applications" :rows="rows" />
     <DelinquentTemplate v-if="currentStatus === 'my needs'" title="My Delinquent Loans" :rows="rows" />
   </BaseTableSection>
@@ -64,19 +64,19 @@ export default Vue.extend({
         },
         {
           status: "in-repayment delinquent1",
-          text: "1-30 Day Delinquent",
+          text: "1-4 Week Delinquent",
         },
         {
           status: "in-repayment delinquent2",
-          text: "31-60 Day Delinquent",
+          text: "5-8 Week Delinquent",
         },
         {
           status: "in-repayment delinquent3",
-          text: "61-90 Day Delinquent",
+          text: "8-12 Week Delinquent",
         },
         {
           status: "in-repayment delinquent4",
-          text: "90+ Day Delinquent",
+          text: "12 + Week Delinquent",
         },
       ],
     };

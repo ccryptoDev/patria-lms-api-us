@@ -19,21 +19,67 @@
             <th>Card expiration</th>
             <th>Added/Updated</th>
           </tr>
-          <tr v-for="card in cards" :key="card.paymentMethodToken">
+          <tr v-for="card in cards" :key="card._id">
             <td>{{ card.nameOnCard }} </td>
             <td class="row" style="margin:0px; height: 100%;">
-              <input v-if="card.isDefault" :id="card.paymentMethodToken" class="checks" type="checkbox" style=""
+              <input v-if="card.isDefault" :id="card._id" class="checks" type="checkbox" style=""
                 v-on:change="check($event)" checked />
-              <input v-else :id="card.paymentMethodToken" class="checks" type="checkbox" style=""
+              <input v-else :id="card._id" class="checks" type="checkbox" style=""
                 v-on:change="check($event)" />
             </td>
             <td>{{ card.cardNumberLastFour }}</td>
-            <td v-if="isCardExpired(card.cardExpiration)">
+            <td v-if="isCardExpired(card.cardExpiration) && card.paymentType==='CARD'">
               {{ card.cardExpiration }}
               <span style="color: #ef5493;">(Expired)</span>
             </td>
             <td v-else>{{ card.cardExpiration }}</td>
             <td>{{ card.updatedAt | date }}</td>
+            <!-- <td>
+              <button :disabled="isLoading" type="button" class="btn btn-primary"
+                style="font-weight: bold; text-align: center; border-radius: 10px;" id="resignEFTA"
+                @click.prevent="removeCardOrBank('CARD', card._id)">
+                <span>Remove</span>
+                <b-spinner small v-show="isLoading"></b-spinner>
+              </button>
+            </td> -->
+          </tr>
+        </tbody>
+      </table>
+      <table v-if="userBankAccount && userBankAccount.length > 0">
+        <tbody>
+          <tr>
+            <th>Bank name</th>
+            <th>Default</th>
+            <th>Account type</th>
+            <th>Account number</th>
+            <th>Routing number</th>
+          </tr>
+          <tr v-for="bank in userBankAccount" :key="bank._id">
+            <td>{{ bank.financialInstitution }}</td>
+            <td class="row" style="margin:0px; height: 100%;">
+              <input v-if="bank.isDefault" :id="bank._id" class="checks" type="checkbox" style=""
+                v-on:change="check($event)" checked />
+              <input v-else :id="bank._id" class="checks" type="checkbox" style="" v-on:change="check($event)" />
+            </td>
+            <td>{{ bank.accountType }}</td>
+            <td>{{ bank.accountNumber }}</td>
+            <td>{{ bank.routingNumber }}</td>
+            <!-- <td>
+                      <button :disabled="isLoading" type="button" class="btn btn-primary"
+                        style="font-weight: bold; text-align: center; border-radius: 10px;" id="resignEFTA"
+                        @click.prevent="resignEFTA(card.paymentMethodToken)">
+                        <span>Resign EFTA</span>
+                        <b-spinner small v-show="isLoading"></b-spinner>
+                      </button>
+                    </td> -->
+            <!-- <td>
+              <button :disabled="isLoading" type="button" class="btn btn-primary"
+                style="font-weight: bold; text-align: center; border-radius: 10px;" id="resignEFTA"
+                @click.prevent="removeCardOrBank('ACH', bank._id)">
+                <span>Remove</span>
+                <b-spinner small v-show="isLoading"></b-spinner>
+              </button>
+            </td> -->
           </tr>
         </tbody>
       </table>
@@ -53,7 +99,7 @@
 <script lang="ts">
 
 import { adminDashboardRequests } from "@/api/admin-dashboard";
-import { getApplicationData, updateUserCard } from "@/user-application/application/api";
+import { getApplicationData, updateUserCard, removeCardOrAchAccount } from "@/user-application/application/api";
 import { getDashboardData } from "@/user-application/dashboard/api";
 import Vue from "vue";
 import AddCardButton from "@/user-application/dashboard/components/AddCardButton.vue";
@@ -76,7 +122,7 @@ export default Vue.extend({
 
   data() {
     return {
-      cards: [],
+      cards: [] as Array<any>,
       modal: false,
       currentDC: {},
       initialDC: {},
@@ -84,7 +130,8 @@ export default Vue.extend({
       paymentManagementData: {},
       intialDefaultCardId: null,
       isLoading: true,
-      componentKey: 0
+      componentKey: 0,
+      userBankAccount: [] as Array<any>,
     };
   },
 
@@ -100,8 +147,8 @@ export default Vue.extend({
       for (const box of checkbox) {
         if (box.id == id) {
           box.checked = true;
-          const defaultCard = cards.find((card: { paymentMethodToken: any; }) => card.paymentMethodToken == box.id);
-          return defaultCard.paymentMethodToken;
+          const defaultCard = cards.find((card: { _id: any; }) => card._id == box.id);
+          return defaultCard._id;
         }
       }
     },
@@ -116,12 +163,18 @@ export default Vue.extend({
       const checkbox = document.querySelectorAll('.checks');
       this.setDefaultCard(this.initialDC, checkbox, this.cards);
     },
+    separateCardAndAchAccount: function (userCard: Array<any>) {
+      if (!userCard) return;
+      this.userBankAccount = userCard.filter((item) => item.paymentType === 'ACH');
+      this.cards = userCard.filter((item) => item.paymentType === 'CARD');
+    },
     saveDefaultCard: async function () {
 
       const paymentMethodToken: any = this.currentDC;
       // update card
       const requestBody = {
-        paymentMethodToken: paymentMethodToken,
+        // paymentMethodToken: paymentMethodToken,
+        paymentId: paymentMethodToken
       }
       await updateUserCard(requestBody);
       this.initialDC = this.currentDC;
@@ -141,8 +194,9 @@ export default Vue.extend({
       } = dashboardDataResponse.data;
       this.cards = userAccountsData;
       const defaultCard = userAccountsData.find((card: any) => card.isDefault === true);
-      this.initialDC = defaultCard.paymentMethodToken;
-      this.currentDC = defaultCard.paymentMethodToken;
+      this.separateCardAndAchAccount(userAccountsData);
+      this.initialDC = defaultCard._id;
+      this.currentDC = defaultCard._id;
       const checkbox = document.querySelectorAll('.checks');
       this.setDefaultCard(this.currentDC, checkbox, this.cards);
     },
@@ -156,6 +210,7 @@ export default Vue.extend({
           userAccountsData,
         } = dashboardDataResponse.data;
         this.cards = userAccountsData;
+        this.separateCardAndAchAccount(userAccountsData);
         const defaultCard = userAccountsData.find((card: any) => card.isDefault === true);
         if (defaultCard) {
           this.initialDC = defaultCard.paymentMethodToken;
@@ -185,6 +240,20 @@ export default Vue.extend({
         }
       }
     },
+    async removeCardOrBank(paymentType: "ACH" | "CARD", paymentId: string) {
+      const payload = {
+        screenTrackingId: this.screenTrackingId,
+        paymentType,
+        paymentId,
+      };
+      await removeCardOrAchAccount(payload);
+      await this.$swal({
+        title: "Success!",
+        text: "Account has been removed",
+        icon: "success",
+      });
+      this.reloadPage();
+    },
   },
 
   async mounted() {
@@ -199,6 +268,7 @@ export default Vue.extend({
       } = dashboardDataResponse.data;
       this.paymentManagementData = paymentManagementData;
       this.cards = userAccountsData;
+      this.separateCardAndAchAccount(userAccountsData);
       const defaultCard = userAccountsData.find((card: any) => card.isDefault === true);
       if (defaultCard) {
         this.initialDC = defaultCard.paymentMethodToken;

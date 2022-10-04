@@ -1,15 +1,11 @@
 <template>
   <div>
     <div
-      style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0 10px 10px; font-weight: bold;"
-    >
+      style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0 10px 10px; font-weight: bold;">
       <h3 style="font-weight: bold;">
         Debit Cards
       </h3>
-      <AddCardButton
-        :screenTrackingId="screenTrackingId"
-        @reloadPage="reloadPage"
-      />
+      <AddCardButton :screenTrackingId="screenTrackingId" @reloadPage="reloadPage" />
     </div>
     <table v-if="cards && cards.length > 0">
       <tbody>
@@ -23,23 +19,10 @@
         <tr v-for="card in cards" :key="card.paymentMethodToken">
           <td>{{ card.firstName }}{{ card.lastName }}</td>
           <td class="row" style="margin:0px; height: 100%;">
-            <input
-              v-if="card.isDefault"
-              :id="card.paymentMethodToken"
-              class="checks"
-              type="checkbox"
-              style=""
-              v-on:change="check($event)"
-              checked
-            />
-            <input
-              v-else
-              :id="card.paymentMethodToken"
-              class="checks"
-              type="checkbox"
-              style=""
-              v-on:change="check($event)"
-            />
+            <input v-if="card.isDefault" :id="card._id" class="checks" type="checkbox" style=""
+              v-on:change="check($event)" checked />
+            <input v-else :id="card._id" class="checks" type="checkbox" style=""
+              v-on:change="check($event)" />
           </td>
           <td>{{ card.cardNumberLastFour }}</td>
           <td v-if="isCardExpired(card.cardExpiration)">
@@ -57,14 +40,9 @@
             </button>
           </td> -->
           <td>
-            <button
-              :disabled="isLoading"
-              type="button"
-              class="btn btn-primary"
-              style="font-weight: bold; text-align: center; border-radius: 10px;"
-              id="resignEFTA"
-              @click.prevent="removeCardOrBank('CARD', card._id)"
-            >
+            <button :disabled="isLoading" type="button" class="btn btn-primary"
+              style="font-weight: bold; text-align: center; border-radius: 10px;" id="resignEFTA"
+              @click.prevent="removeCardOrBank('CARD', card._id)">
               <span>Remove</span>
               <b-spinner small v-show="isLoading"></b-spinner>
             </button>
@@ -73,8 +51,7 @@
       </tbody>
     </table>
     <div
-      style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0 10px 10px; font-weight: bold;"
-    >
+      style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0 10px 10px; font-weight: bold;">
       <h3 style="font-weight: bold;">
         Bank accounts
       </h3>
@@ -96,23 +73,9 @@
         <tr v-for="bank in bankAccounts" :key="bank._id">
           <td>{{ bank.bankName }}</td>
           <td class="row" style="margin:0px; height: 100%;">
-            <input
-              v-if="bank.isDefault"
-              :id="bank._id"
-              class="checks"
-              type="checkbox"
-              style=""
-              v-on:change="check($event)"
-              checked
-            />
-            <input
-              v-else
-              :id="bank._id"
-              class="checks"
-              type="checkbox"
-              style=""
-              v-on:change="check($event)"
-            />
+            <input v-if="bank.isDefault" :id="bank._id" class="checks" type="checkbox" style=""
+              v-on:change="check($event)" checked />
+            <input v-else :id="bank._id" class="checks" type="checkbox" style="" v-on:change="check($event)" />
           </td>
           <td>{{ bank.institutionType }}</td>
           <td>{{ bank.accountNumber }}</td>
@@ -126,14 +89,9 @@
             </button>
           </td> -->
           <td>
-            <button
-              :disabled="isLoading"
-              type="button"
-              class="btn btn-primary"
-              style="font-weight: bold; text-align: center; border-radius: 10px;"
-              id="resignEFTA"
-              @click.prevent="removeCardOrBank('ACH', bank._id)"
-            >
+            <button :disabled="isLoading" type="button" class="btn btn-primary"
+              style="font-weight: bold; text-align: center; border-radius: 10px;" id="resignEFTA"
+              @click.prevent="removeCardOrBank('ACH', bank._id)">
               <span>Remove</span>
               <b-spinner small v-show="isLoading"></b-spinner>
             </button>
@@ -204,14 +162,14 @@ export default Vue.extend({
         if (box.id == id) {
           box.checked = true;
           const defaultCard = cards.find(
-            (card: { paymentMethodToken: any }) =>
-              card.paymentMethodToken == box.id
+            (card: { _id: any }) =>
+              card._id == box.id
           );
-          return defaultCard.paymentMethodToken;
+          return defaultCard._id;
         }
       }
     },
-    check: function(e: any) {
+    check: function (e: any) {
       this.modal = true;
       const checkbox = document.querySelectorAll(".checks");
       this.currentDC = this.setDefaultCard(e.target.id, checkbox, this.cards);
@@ -222,7 +180,7 @@ export default Vue.extend({
       const checkbox = document.querySelectorAll(".checks");
       this.setDefaultCard(this.initialDC, checkbox, this.cards);
     },
-    saveDefaultCard: async function() {
+    saveDefaultCard: async function () {
       const paymentMethodToken: any = this.currentDC;
       //update card
       await adminDashboardRequests.updateUserCard(paymentMethodToken);
@@ -239,8 +197,8 @@ export default Vue.extend({
       );
       this.cards = data;
       const defaultCard = data.find((card: any) => card.isDefault === true);
-      this.initialDC = defaultCard.paymentMethodToken;
-      this.currentDC = defaultCard.paymentMethodToken;
+      this.initialDC = defaultCard._id;
+      this.currentDC = defaultCard._id;
       const checkbox = document.querySelectorAll(".checks");
       this.setDefaultCard(this.currentDC, checkbox, this.cards);
     },
@@ -343,8 +301,8 @@ export default Vue.extend({
       const defaultCard = userCards.find(
         (card: any) => card.isDefault === true
       );
-      this.initialDC = defaultCard?.paymentMethodToken;
-      this.currentDC = defaultCard?.paymentMethodToken;
+      this.initialDC = defaultCard?._id;
+      this.currentDC = defaultCard?._id;
 
       const {
         data: userBankAccounts,

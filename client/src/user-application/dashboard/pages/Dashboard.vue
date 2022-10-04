@@ -7,7 +7,11 @@
             <div class="page-main-title">Your customer portal</div>
             <div class="">
               <button
-                v-if="!isScreenCompleted"
+                v-if="
+                  paymentManagementData.status !== 'in-repayment non-prime' &&
+                    paymentManagementData.status !== 'in-repayment prime' &&
+                    paymentManagementData.status !== 'in-repayment'
+                "
                 @click="onContinueApplication"
                 style="margin-left: 150px "
               >
@@ -34,7 +38,7 @@
             <b-tab title="Payments" lazy>
               <Payment :screenTrackingId="screenTrackingId" />
             </b-tab>
-            <b-tab title="Cards" lazy>
+            <b-tab title="Accounts" lazy>
               <Accounts
                 :screenTrackingId="screenTrackingId"
                 :addCardFlag="addCardFlag"
@@ -122,8 +126,7 @@ export default Vue.extend({
 
       this.applicationDataResponse = applicationDataResponse.data;
       this.dashboardDataResponse = dashboardDataResponse.data;
-      const { firstName, screenTrackingId, isCompleted } = applicationDataResponse.data;
-      this.isScreenCompleted = isCompleted;
+      const { firstName, screenTrackingId } = applicationDataResponse.data;
       this.firstName = firstName;
       this.screenTrackingId = screenTrackingId;
 

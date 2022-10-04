@@ -19,6 +19,23 @@ export const addCard = async (requestBody: {
     headers: { Authorization: `Bearer ${getUserToken()}` },
   });
 };
+export const addBank = async (
+  screenTrackingId: string,
+  data: {
+    bankName: string;
+    accountHolder: string;
+    routingNumber: string;
+    accountNumber: string;
+  }
+) => {
+  const response = await axios.post(
+    `${baseUrl}/api/application/users/bank-accounts/${screenTrackingId}`,
+    data,
+    { headers: { Authorization: `Bearer ${getUserToken()}` }, }
+  );
+
+  return response;
+}
 
 export const makeDownPayment = async (requestBody: {
   amount: number;

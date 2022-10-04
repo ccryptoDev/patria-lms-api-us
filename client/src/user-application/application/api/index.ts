@@ -34,8 +34,23 @@ export const getApplicationData = async (): Promise<AxiosResponse<any>> => {
   });
 };
 
+export const removeCardOrAchAccount = async (context: {
+  screenTrackingId: string, paymentType: string, paymentId: string,
+}): Promise<AxiosResponse<any>> => {
+  const response = await axios.post(
+    `${baseUrl}/api/account/remove-accounts`, context,
+    {
+      headers: {
+        Authorization: `Bearer ${getUserToken()}`,
+      },
+    }
+  );
+
+  return response;
+}
+
 export const updateUserCard = async (requestBody: {
-  paymentMethodToken: string;
+  paymentMethodToken?: string; paymentId: string | null;
 }): Promise<AxiosResponse<any>> => {
   return axios.patch(`${baseUrl}/api/application/user/cards`, requestBody, {
     headers: {

@@ -1,198 +1,387 @@
 <template>
   <div>
     <div class="text-right">
-      <button class="primary" @click="showAddCardModal">Add Card</button>
+      <button class="primary" @click="showAddCardModal">Add Account</button>
     </div>
     <VueFinalModal v-model="modal" classes="share-modal-container" content-class="share-modal-content"
       :clickToClose="false">
       <div class="container" style="width: 800px;height: 650px;overflow:auto;">
-        <ValidationObserver ref="observer" v-slot="{ handleSubmit }">
-          <b-form @submit.stop.prevent="handleSubmit(onSubmit)" style="transform: scale(0.9,0.9)">
-            <div class="cardForm">
-              <h5 class="cardDetails">Debit Card Details</h5>
-              <div class="visa"><i class="fab fa-cc-visa"></i></div>
-              <div class="masterCard">
-                <i class="fab fa-cc-mastercard"></i>
+        <ValidationObserver ref="observer" v-slot="{  }">
+          <b-tabs style="margin-top: 20px; max-height: 600px; overflow: auto">
+            <b-tab title="Card" active>
+
+              <b-form @submit.stop.prevent="()=>onSubmit('card')" style="transform: scale(0.9,0.9)">
+                <div class="cardForm">
+                  <h5 class="cardDetails">Debit Card Details</h5>
+                  <div class="visa"><i class="fab fa-cc-visa"></i></div>
+                  <div class="masterCard">
+                    <i class="fab fa-cc-mastercard"></i>
+                  </div>
+
+                  <b-form-row>
+                    <b-col md="12">
+                      <ValidationProvider name="Card Number"
+                        :rules="{ required: true, min: amexOrVisaLength, max: amexOrVisaLength }"
+                        v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-input v-model="cardNumber" v-mask="amexOrVisa" placeholder="Card Number"
+                            :state="getValidationState(validationContext)"></b-form-input>
+
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+                  </b-form-row>
+
+                  <b-form-row>
+                    <b-col md="12">
+                      <ValidationProvider name="Name" :rules="{ required: true }" v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-input v-model="cardHolder" placeholder="Full Name"
+                            :state="getValidationState(validationContext)" @keypress="isLetter($event)"></b-form-input>
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+                  </b-form-row>
+
+                  <b-form-row>
+                    <b-col md="6">
+                      <ValidationProvider name="Expiration"
+                        :rules="{ required: true, min: 5, max: 5, notExpired: true }" v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-input type="text" autocomplete="off" v-model="expirationDate" v-mask="'##/##'"
+                            placeholder="Expiration (MM/YY)" :state="getValidationState(validationContext)">
+                          </b-form-input>
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+
+                    <b-col md="6">
+                      <ValidationProvider name="Security code"
+                        :rules="{ required: true, min: amexOrVisaSecLength, max: amexOrVisaSecLength }"
+                        v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-input type="password" autocomplete="off" v-model="cardCode"
+                            v-mask="amexOrVisaSecurityCode" placeholder="Security Code"
+                            :state="getValidationState(validationContext)"></b-form-input>
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+                  </b-form-row>
+
+                  <h5 class="billingAddress">Billing Address</h5>
+                  <b-form-row>
+                    <input type="checkbox" class="isHomeAddress" id="isHomeAddress" v-model="checked"
+                      v-on:change="showHomeAddress()">
+                    <label for="checkbox" class="homeAddressLabel"> Home address</label>
+                  </b-form-row>
+
+                  <b-form-row>
+                    <b-col md="6">
+                      <ValidationProvider name="first Name" :rules="{ required: true }" v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-input v-model="firstName" ref="firstName" placeholder="First Name"
+                            :state="getValidationState(validationContext)" @keypress="isLetter($event)"></b-form-input>
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+
+                    <b-col md="6">
+                      <ValidationProvider name="Last Name" :rules="{ required: true }" v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-input v-model="lastName" ref="lastName" placeholder="Last Name"
+                            :state="getValidationState(validationContext)" @keypress="isLetter($event)"></b-form-input>
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+                  </b-form-row>
+
+                  <b-form-row>
+                    <b-col md="12">
+                      <ValidationProvider name="Street Address" :rules="{ required: true }" v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-input v-model="street" ref="street" placeholder="Street Address"
+                            :state="getValidationState(validationContext)"></b-form-input>
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+                  </b-form-row>
+
+                  <b-form-row>
+                    <b-col md="12">
+                      <ValidationProvider name="City" :rules="{ required: true }" v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-input v-model="city" ref="city" placeholder="City"
+                            :state="getValidationState(validationContext)" @keypress="isLetter($event)"></b-form-input>
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+                  </b-form-row>
+
+                  <b-form-row>
+                    <b-col md="6">
+                      <ValidationProvider name="State" :rules="{ required: true }" v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-select v-model="selectedState" ref="selectedState"
+                            :state="getValidationState(validationContext)" :options="parsedStates" class="form-control">
+                          </b-form-select>
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+
+                    <b-col md="6">
+                      <ValidationProvider name="Zip Code" :rules="{ required: true }" v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-input v-model="zipCode" ref="zipCode" v-mask="'#####'" placeholder="Zip Code"
+                            :state="getValidationState(validationContext)"></b-form-input>
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+                  </b-form-row>
+                  <div v-if="!autopayStatusData" class="custom-control custom-checkbox check-agreement">
+                    <input type="checkbox" class="custom-control-input" id="enableAutopay" name="enableAutopay"
+                      v-model="isAutopayChecked" />
+                    <label id="enableAutopayLabel" class="custom-control-label" for="enableAutopay">Turn on auto
+                      payment</label>
+                  </div>
+                  <div class="custom-control custom-checkbox check-agreement">
+                    <input type="checkbox" class="custom-control-input" id="eftaAgreement" name="eftaAgreement"
+                      v-model="isEFTAChecked" />
+                    <label v-if="isAutopayChecked" class="custom-control-label" for="eftaAgreement">By selecting this
+                      box,
+                      I
+                      have reviewed this authorization
+                      for having my contract payments made with this payment method automatically and
+                      agree to its terms.</label>
+                    <label v-else class="custom-control-label" for="eftaAgreement">By selecting this box, I have
+                      reviewed
+                      this authorization
+                      for having my contract payments made using this payment method and
+                      agree to its terms.</label>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <button @click="onCancel" type="button" class="secondary" style="margin-right: 10px;">
+                    Cancel
+                  </button>
+                  <button type="submit" class="primary" style="margin-left: 10px;" :disabled="!isEFTAChecked">
+                    <span>Add Card</span>
+                    <b-spinner small v-show="isLoading"></b-spinner>
+                  </button>
+                </div>
+              </b-form>
+            </b-tab>
+            <b-tab title="ACH">
+              <div class="cardForm">
+                <b-form @submit.stop.prevent="() => onSubmit('ACH')" style="transform: scale(0.9,0.9)">
+                  <h5 class="cardDetails">ACH</h5>
+                  <!--  bankName: string;
+                                  accountHolder: string;
+                                  routingNumber: string;
+                                  accountNumber: string; -->
+
+                  <b-form-row>
+                    <b-col md="12">
+                      <ValidationProvider name="Bank name" :rules="{
+                        required: true,
+                      }" v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-input v-model="bankName" placeholder="Bank name"
+                            :state="getValidationState(validationContext)">
+                          </b-form-input>
+
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+                  </b-form-row>
+
+                  <b-form-row>
+                    <b-col md="12">
+                      <ValidationProvider name="Account holder name" :rules="{
+                        required: true,
+                      }" v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-input v-model="accountHolder" placeholder="Account holder name"
+                            :state="getValidationState(validationContext)"></b-form-input>
+
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+                  </b-form-row>
+
+                  <b-form-row>
+                    <b-col md="12">
+                      <ValidationProvider name="Routing number" :rules="{
+                        required: true,
+                      }" v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-input v-model="routingNumber" placeholder="Routing number" v-mask="'#########'"
+                            :state="getValidationState(validationContext)"></b-form-input>
+
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+                  </b-form-row>
+
+                  <b-form-row>
+                    <b-col md="12">
+                      <ValidationProvider name="Account number" :rules="{
+                        required: true,
+                      }" v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-input v-model="accountNumber" placeholder="Account number"
+                            v-mask="'#################'" :state="getValidationState(validationContext)"></b-form-input>
+
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+                  </b-form-row>
+
+                  <h5 class="billingAddress">Billing Address</h5>
+                  <b-form-row>
+                    <input type="checkbox" class="isHomeAddress" id="isHomeAddress" v-model="checked"
+                      v-on:change="showHomeAddress()" />
+                    <label for="checkbox" class="homeAddressLabel">
+                      Home address</label>
+                  </b-form-row>
+
+                  <b-form-row>
+                    <b-col md="6">
+                      <ValidationProvider name="first Name" :rules="{ required: true }" v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-input v-model="firstName" ref="firstName" placeholder="First Name"
+                            :state="getValidationState(validationContext)" @keypress="isLetter($event)"></b-form-input>
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+
+                    <b-col md="6">
+                      <ValidationProvider name="Last Name" :rules="{ required: true }" v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-input v-model="lastName" ref="lastName" placeholder="Last Name"
+                            :state="getValidationState(validationContext)" @keypress="isLetter($event)"></b-form-input>
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+                  </b-form-row>
+
+                  <b-form-row>
+                    <b-col md="12">
+                      <ValidationProvider name="Street Address" :rules="{ required: true }" v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-input v-model="street" ref="street" placeholder="Street Address"
+                            :state="getValidationState(validationContext)"></b-form-input>
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+                  </b-form-row>
+
+                  <b-form-row>
+                    <b-col md="12">
+                      <ValidationProvider name="City" :rules="{ required: true }" v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-input v-model="city" ref="city" placeholder="City"
+                            :state="getValidationState(validationContext)" @keypress="isLetter($event)"></b-form-input>
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+                  </b-form-row>
+
+                  <b-form-row>
+                    <b-col md="6">
+                      <ValidationProvider name="State" :rules="{ required: true }" v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-select v-model="selectedState" ref="selectedState"
+                            :state="getValidationState(validationContext)" :options="parsedStates" class="form-control">
+                          </b-form-select>
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+
+                    <b-col md="6">
+                      <ValidationProvider name="Zip Code" :rules="{ required: true }" v-slot="validationContext">
+                        <b-form-group>
+                          <b-form-input v-model="zipCode" ref="zipCode" v-mask="'#####'" placeholder="Zip Code"
+                            :state="getValidationState(validationContext)"></b-form-input>
+                          <b-form-invalid-feedback>{{
+                          validationContext.errors[0]
+                          }}</b-form-invalid-feedback>
+                        </b-form-group>
+                      </ValidationProvider>
+                    </b-col>
+                  </b-form-row>
+
+                  <div class="row">
+                    <button @click="onCancel" type="button" class="secondary" style="margin-right: 10px;">
+                      Cancel
+                    </button>
+                    <button type="submit" class="primary" style="margin-left: 10px;">
+                      <span>Add ACH</span>
+                      <b-spinner small v-show="isLoading"></b-spinner>
+                    </button>
+                  </div>
+                </b-form>
               </div>
+            </b-tab>
+          </b-tabs>
 
-              <b-form-row>
-                <b-col md="12">
-                  <ValidationProvider name="Card Number"
-                    :rules="{ required: true, min: amexOrVisaLength, max: amexOrVisaLength }"
-                    v-slot="validationContext">
-                    <b-form-group>
-                      <b-form-input v-model="cardNumber" v-mask="amexOrVisa" placeholder="Card Number"
-                        :state="getValidationState(validationContext)"></b-form-input>
-
-                      <b-form-invalid-feedback>{{
-                          validationContext.errors[0]
-                      }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </ValidationProvider>
-                </b-col>
-              </b-form-row>
-
-              <b-form-row>
-                <b-col md="12">
-                  <ValidationProvider name="Name" :rules="{ required: true }" v-slot="validationContext">
-                    <b-form-group>
-                      <b-form-input v-model="cardHolder" placeholder="Full Name"
-                        :state="getValidationState(validationContext)" @keypress="isLetter($event)"></b-form-input>
-                      <b-form-invalid-feedback>{{
-                          validationContext.errors[0]
-                      }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </ValidationProvider>
-                </b-col>
-              </b-form-row>
-
-              <b-form-row>
-                <b-col md="6">
-                  <ValidationProvider name="Expiration" :rules="{ required: true, min: 5, max: 5, notExpired: true }"
-                    v-slot="validationContext">
-                    <b-form-group>
-                      <b-form-input type="text" autocomplete="off" v-model="expirationDate" v-mask="'##/##'"
-                        placeholder="Expiration (MM/YY)" :state="getValidationState(validationContext)"></b-form-input>
-                      <b-form-invalid-feedback>{{
-                          validationContext.errors[0]
-                      }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </ValidationProvider>
-                </b-col>
-
-                <b-col md="6">
-                  <ValidationProvider name="Security code"
-                    :rules="{ required: true, min: amexOrVisaSecLength, max: amexOrVisaSecLength }"
-                    v-slot="validationContext">
-                    <b-form-group>
-                      <b-form-input type="password" autocomplete="off" v-model="cardCode"
-                        v-mask="amexOrVisaSecurityCode" placeholder="Security Code"
-                        :state="getValidationState(validationContext)"></b-form-input>
-                      <b-form-invalid-feedback>{{
-                          validationContext.errors[0]
-                      }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </ValidationProvider>
-                </b-col>
-              </b-form-row>
-
-              <h5 class="billingAddress">Billing Address</h5>
-              <b-form-row>
-                <input type="checkbox" class="isHomeAddress" id="isHomeAddress" v-model="checked"
-                  v-on:change="showHomeAddress()">
-                <label for="checkbox" class="homeAddressLabel"> Home address</label>
-              </b-form-row>
-
-              <b-form-row>
-                <b-col md="6">
-                  <ValidationProvider name="first Name" :rules="{ required: true }" v-slot="validationContext">
-                    <b-form-group>
-                      <b-form-input v-model="firstName" ref="firstName" placeholder="First Name"
-                        :state="getValidationState(validationContext)" @keypress="isLetter($event)"></b-form-input>
-                      <b-form-invalid-feedback>{{
-                          validationContext.errors[0]
-                      }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </ValidationProvider>
-                </b-col>
-
-                <b-col md="6">
-                  <ValidationProvider name="Last Name" :rules="{ required: true }" v-slot="validationContext">
-                    <b-form-group>
-                      <b-form-input v-model="lastName" ref="lastName" placeholder="Last Name"
-                        :state="getValidationState(validationContext)" @keypress="isLetter($event)"></b-form-input>
-                      <b-form-invalid-feedback>{{
-                          validationContext.errors[0]
-                      }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </ValidationProvider>
-                </b-col>
-              </b-form-row>
-
-              <b-form-row>
-                <b-col md="12">
-                  <ValidationProvider name="Street Address" :rules="{ required: true }" v-slot="validationContext">
-                    <b-form-group>
-                      <b-form-input v-model="street" ref="street" placeholder="Street Address"
-                        :state="getValidationState(validationContext)"></b-form-input>
-                      <b-form-invalid-feedback>{{
-                          validationContext.errors[0]
-                      }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </ValidationProvider>
-                </b-col>
-              </b-form-row>
-
-              <b-form-row>
-                <b-col md="12">
-                  <ValidationProvider name="City" :rules="{ required: true }" v-slot="validationContext">
-                    <b-form-group>
-                      <b-form-input v-model="city" ref="city" placeholder="City"
-                        :state="getValidationState(validationContext)" @keypress="isLetter($event)"></b-form-input>
-                      <b-form-invalid-feedback>{{
-                          validationContext.errors[0]
-                      }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </ValidationProvider>
-                </b-col>
-              </b-form-row>
-
-              <b-form-row>
-                <b-col md="6">
-                  <ValidationProvider name="State" :rules="{ required: true }" v-slot="validationContext">
-                    <b-form-group>
-                      <b-form-select v-model="selectedState" ref="selectedState"
-                        :state="getValidationState(validationContext)" :options="parsedStates" class="form-control">
-                      </b-form-select>
-                      <b-form-invalid-feedback>{{
-                          validationContext.errors[0]
-                      }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </ValidationProvider>
-                </b-col>
-
-                <b-col md="6">
-                  <ValidationProvider name="Zip Code" :rules="{ required: true }" v-slot="validationContext">
-                    <b-form-group>
-                      <b-form-input v-model="zipCode" ref="zipCode" v-mask="'#####'" placeholder="Zip Code"
-                        :state="getValidationState(validationContext)"></b-form-input>
-                      <b-form-invalid-feedback>{{
-                          validationContext.errors[0]
-                      }}</b-form-invalid-feedback>
-                    </b-form-group>
-                  </ValidationProvider>
-                </b-col>
-              </b-form-row>
-              <div v-if="!autopayStatusData" class="custom-control custom-checkbox check-agreement">
-                <input type="checkbox" class="custom-control-input" id="enableAutopay" name="enableAutopay"
-                  v-model="isAutopayChecked" />
-                <label id="enableAutopayLabel" class="custom-control-label" for="enableAutopay">Turn on auto
-                  payment</label>
-              </div>
-              <div class="custom-control custom-checkbox check-agreement">
-                <input type="checkbox" class="custom-control-input" id="eftaAgreement" name="eftaAgreement"
-                  v-model="isEFTAChecked" />
-                <label v-if="isAutopayChecked" class="custom-control-label" for="eftaAgreement">By selecting this box, I
-                  have reviewed this authorization
-                  for having my contract payments made with this payment method automatically and
-                  agree to its terms.</label>
-                <label v-else class="custom-control-label" for="eftaAgreement">By selecting this box, I have reviewed
-                  this authorization
-                  for having my contract payments made using this payment method and
-                  agree to its terms.</label>
-              </div>
-            </div>
-
-            <div class="row">
-              <button @click="onCancel" type="button" class="secondary" style="margin-right: 10px;">
-                Cancel
-              </button>
-              <button type="submit" class="primary" style="margin-left: 10px;" :disabled="!isEFTAChecked">
-                <span>Add Card</span>
-                <b-spinner small v-show="isLoading"></b-spinner>
-              </button>
-            </div>
-          </b-form>
         </ValidationObserver>
       </div>
     </VueFinalModal>
@@ -213,6 +402,7 @@ import { mapMutations } from "vuex";
 import {
   addCard,
   saveEFTA,
+  addBank,
 } from "@/user-application/repayment/api";
 import { enableAutopay } from "@/user-application/dashboard/api";
 
@@ -264,6 +454,10 @@ export default Vue.extend({
       selectedOffer: null as null | IOffer,
       ricSignature: null as null | string,
       ip: null as null | string,
+      bankName: null as null | string,
+      accountHolder: null as null | string,
+      routingNumber: null as null | string,
+      accountNumber: null as null | string,
     };
   },
   computed: {
@@ -428,12 +622,26 @@ export default Vue.extend({
       }
       return null;
     },
-    async onSubmit() {
+
+    async onSubmit(type = "card") {
       this.isSubmitting = true;
       this.isDefaultCard = true;
       this.isLoading = true;
       try {
-        if (this.cardIssuer()) {
+        if (type === 'card') {
+          if (!this.cardIssuer()) {
+            this.cardNumber = "";
+            this.cardCode = "";
+            this.expirationDate = "";
+            this.cardHolder = "";
+            await this.$swal({
+              title: "Error",
+              text: `${"The card info you entered is invalid!"}`,
+              icon: "error",
+            });
+            this.isLoading = false;
+            return;
+          }
           const promiseArray = [this.saveEFTAAgreement(), this.saveCard()];
           await Promise.all(promiseArray);
           if (this.isAutopayChecked) {
@@ -449,18 +657,30 @@ export default Vue.extend({
           this.isLoading = false;
           this.modal = false;
           this.$emit("reloadPage");
-        } else {
-          this.cardNumber = "";
-          this.cardCode = "";
-          this.expirationDate = "";
-          this.cardHolder = "";
-          await this.$swal({
-            title: "Error",
-            text: `${"The card info you entered is invalid!"}`,
-            icon: "error",
-          });
+        } else if (type === 'ACH') {
+          const requestBody = {
+            bankName: this.bankName || "",
+            accountHolder: this.accountHolder || "",
+            routingNumber: this.routingNumber || "",
+            accountNumber: this.accountNumber || "",
+          };
+
+          await addBank(
+            this.screenTrackingId,
+            requestBody
+          );
           this.isLoading = false;
+
+          await this.$swal({
+            title: "Success!",
+            text: "ACH successfully added.",
+            icon: "success",
+          });
+
+          this.modal = false;
+          this.$emit("reloadPage");
         }
+
       } catch (error) {
         const errorMessage = await errorHandler(error, this.$router);
         if (errorMessage) {

@@ -17,10 +17,10 @@ export const getPaymentPreview = async (requestBody: {
   return axios.post(
     `${baseUrl}/api/application/dashboard/previewPayment`,
     requestBody, {
-      headers: {
-        Authorization: `Bearer ${getUserToken()}`,
-      },
-    });
+    headers: {
+      Authorization: `Bearer ${getUserToken()}`,
+    },
+  });
 };
 
 export const submitPayment = async (requestBody: {
@@ -28,14 +28,15 @@ export const submitPayment = async (requestBody: {
   paymentMethodToken: string,
   amount: number,
   paymentDate: Date,
+  paymentVia: string | null
 }): Promise<AxiosResponse<any>> => {
   return axios.post(
     `${baseUrl}/api/application/dashboard/submitPayment`,
     requestBody, {
-      headers: {
-        Authorization: `Bearer ${getUserToken()}`,
-      },
-    });
+    headers: {
+      Authorization: `Bearer ${getUserToken()}`,
+    },
+  });
 };
 
 export const changePaymentAmount = async (requestBody: {
@@ -45,10 +46,10 @@ export const changePaymentAmount = async (requestBody: {
   return axios.patch(
     `${baseUrl}/api/application/dashboard/changePaymentAmount`,
     requestBody, {
-      headers: {
-        Authorization: `Bearer ${getUserToken()}`,
-      },
-    });
+    headers: {
+      Authorization: `Bearer ${getUserToken()}`,
+    },
+  });
 }
 
 export const enableAutopay = async (requestBody: {

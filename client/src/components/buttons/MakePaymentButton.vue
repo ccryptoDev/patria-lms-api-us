@@ -9,63 +9,37 @@
       <button class="primary" style="margin-right: 10px">Make Payment</button>
       <span class="tooltiptextleft">Can Make Payment</span>
     </div>
-    <VueFinalModal
-      v-model="modal"
-      classes="share-modal-container"
-      content-class="share-modal-content"
-      :clickToClose="false"
-    >
-      <div
-        v-if="previewPaymentComponent"
-        class="container"
-        style="width: 35vw;height: 600px;overflow:auto;"
-      >
+    <VueFinalModal v-model="modal" classes="share-modal-container" content-class="share-modal-content"
+      :clickToClose="false">
+      <div v-if="previewPaymentComponent" class="container" style="width: 35vw;height: 600px;overflow:auto;">
         <h3>Make Payment</h3>
         <ValidationObserver v-slot="{ invalid }">
           <form @submit="onNext">
             <div class="row">
-              <div
-                @click="setPaymentType('regular')"
-                style="margin-right: 10px; "
-              >
+              <div @click="setPaymentType('regular')" style="margin-right: 10px; ">
                 <div>
                   Weekly Payment
                 </div>
-                <div
-                  style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;"
-                  class="make-payment-btn"
-                  :class="{ 'make-payment-btn-primary': isMonthlyPayment }"
-                  @click="toggleMonthlyPayment"
-                >
+                <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;"
+                  class="make-payment-btn" :class="{ 'make-payment-btn-primary': isMonthlyPayment }"
+                  @click="toggleMonthlyPayment">
                   <div>
                     {{ previewResults.paymentAmount | currency }}
                   </div>
                   <div class="ico">
-                    <font-awesome-icon
-                      v-show="isMonthlyPayment"
-                      icon="check"
-                      style="vertical-align: middle;"
-                    />
+                    <font-awesome-icon v-show="isMonthlyPayment" icon="check" style="vertical-align: middle;" />
                   </div>
                 </div>
               </div>
               <div @click="setPaymentType('payoff')" style="margin-left: 10px;">
                 <div>Payoff</div>
-                <div
-                  style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;"
-                  class="make-payment-btn"
-                  :class="{ 'make-payment-btn-primary': isPayoff }"
-                  @click="togglePayoff"
-                >
+                <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;"
+                  class="make-payment-btn" :class="{ 'make-payment-btn-primary': isPayoff }" @click="togglePayoff">
                   <div>
                     {{ previewResult.ledger.payoff | currency }}
                   </div>
                   <div class="ico">
-                    <font-awesome-icon
-                      v-show="isPayoff"
-                      icon="check"
-                      style="vertical-align: middle;"
-                    />
+                    <font-awesome-icon v-show="isPayoff" icon="check" style="vertical-align: middle;" />
                   </div>
                 </div>
               </div>
@@ -74,69 +48,33 @@
               <div style="margin-right: 10px; width: 48%;">
                 <label>Payment Date</label>
                 <div>
-                  <Datepicker
-                    v-model="paymentDate"
-                    @selected="onDateSelected"
-                    :disabled-dates="disabledDates"
-                    :format="'MM/dd/yyyy'"
-                    :input-class="'w-100 form-control'"
-                  />
+                  <Datepicker v-model="paymentDate" @selected="onDateSelected" :disabled-dates="disabledDates"
+                    :format="'MM/dd/yyyy'" :input-class="'w-100 form-control'" />
                 </div>
               </div>
               <div style="margin-left: 10px; width: 48%;">
                 <label>Amount</label>
                 <div>
-                  <ValidationProvider
-                    rules="positive"
-                    mode="lazy"
-                    v-slot="{ errors }"
-                  >
-                    <input
-                      type="text"
-                      v-mask="mask"
-                      v-model="amount"
-                      :class="{
-                        'text-danger': errors[0],
-                        'amount-input-error': errors[0],
-                        'form-control': true,
-                      }"
-                      style="width: 100%;"
-                      @blur="onAmountBlur"
-                      @keydown="onAmountKeyDown"
-                    />
-                    <span
-                      class="text-danger amount-error"
-                      style="display: block;"
-                      >{{ errors[0] }}</span
-                    >
+                  <ValidationProvider rules="positive" mode="lazy" v-slot="{ errors }">
+                    <input type="text" v-mask="mask" v-model="amount" :class="{
+                      'text-danger': errors[0],
+                      'amount-input-error': errors[0],
+                      'form-control': true,
+                    }" style="width: 100%;" @blur="onAmountBlur" @keydown="onAmountKeyDown" />
+                    <span class="text-danger amount-error" style="display: block;">{{ errors[0] }}</span>
                   </ValidationProvider>
                 </div>
               </div>
             </div>
             <div class="row">
               <div style="width: 100%;">
-                <div v-if="userCards && userCards.length > 0">
+                <div v-if="allPaymentMethods && allPaymentMethods.length > 0">
                   <!-- <label>Debit Card/Credit Card</label> -->
                   <label>Bank Accounts</label>
                   <div>
-                    <select v-model="selectedCard" class="form-control">
-                      <!-- <option
-                        v-for="card in userCards"
-                        :key="card.paymentMethodToken"
-                        :value="card.paymentMethodToken"
-                        >**** **** **** {{ card.cardNumberLastFour }}
-                      </option> -->
-                      <option
-                        v-for="card in bankAccounts"
-                        :key="card.paymentMethodToken"
-                        :value="card.paymentMethodToken"
-                        >********{{
-                          card.accountNumber
-                            .split("")
-                            .reverse()
-                            .slice(0, 4)
-                            .join("")
-                        }}
+                    <select v-model="selectedCard" class="form-control" @change="onSelectPaymentMethod($event)">
+                      <option v-for="card in allPaymentMethods" :key="card.paymentMethodToken" :value="card._id">
+                        {{showAccountList(card)}}
                       </option>
                     </select>
                   </div>
@@ -167,34 +105,31 @@
                       {{ previewResult.preview.accruedInterest | currency }}
                     </td>
                   </tr>
-                  <tr
-                    v-if="
-                      previewResult.preview.accruedBalance.unpaidInterest > 0
-                    "
-                  >
+                  <tr v-if="
+                    previewResult.preview.accruedBalance.unpaidInterest > 0
+                  ">
                     <td class="text-left">
                       Unpaid Interest
-                      <span style="font-size: 0.80rem; color: #888;"
-                        >({{ previewResult.preview.daysPastDue }}
+                      <span style="font-size: 0.80rem; color: #888;">({{ previewResult.preview.daysPastDue }}
                         day(s) past due)
                       </span>
                     </td>
                     <td class="text-right" style="width: 120;">
                       {{
-                        previewResult.preview.accruedBalance.unpaidInterest
-                          | currency
+                      previewResult.preview.accruedBalance.unpaidInterest
+                      | currency
                       }}
                     </td>
                     <td class="text-right" style="width: 120;">
                       {{
-                        previewResult.preview.paymentBalance.unpaidInterest
-                          | currency
+                      previewResult.preview.paymentBalance.unpaidInterest
+                      | currency
                       }}
                     </td>
                     <td class="text-right" style="width: 120;">
                       {{
-                        previewResult.preview.unpaidBalance.unpaidInterest
-                          | currency
+                      previewResult.preview.unpaidBalance.unpaidInterest
+                      | currency
                       }}
                     </td>
                   </tr>
@@ -202,17 +137,17 @@
                     <td class="text-left">Interest Balance</td>
                     <td class="text-right" style="width: 120;">
                       {{
-                        previewResult.preview.accruedBalance.interest | currency
+                      previewResult.preview.accruedBalance.interest | currency
                       }}
                     </td>
                     <td class="text-right" style="width: 120;">
                       {{
-                        previewResult.preview.paymentBalance.interest | currency
+                      previewResult.preview.paymentBalance.interest | currency
                       }}
                     </td>
                     <td class="text-right" style="width: 120;">
                       {{
-                        previewResult.preview.unpaidBalance.interest | currency
+                      previewResult.preview.unpaidBalance.interest | currency
                       }}
                     </td>
                   </tr>
@@ -220,19 +155,19 @@
                     <td class="text-left">Principal Balance</td>
                     <td class="text-right" style="width: 120;">
                       {{
-                        previewResult.preview.accruedBalance.principal
-                          | currency
+                      previewResult.preview.accruedBalance.principal
+                      | currency
                       }}
                     </td>
                     <td class="text-right" style="width: 120;">
                       {{
-                        previewResult.preview.paymentBalance.principal
-                          | currency
+                      previewResult.preview.paymentBalance.principal
+                      | currency
                       }}
                     </td>
                     <td class="text-right" style="width: 120px;">
                       {{
-                        previewResult.preview.unpaidBalance.principal | currency
+                      previewResult.preview.unpaidBalance.principal | currency
                       }}
                     </td>
                   </tr>
@@ -240,19 +175,10 @@
               </table>
             </div>
             <div class="row">
-              <button
-                @click="hidePreviewPayment"
-                class="secondary"
-                style="margin-right: 10px;"
-              >
+              <button @click="hidePreviewPayment" class="secondary" style="margin-right: 10px;">
                 Cancel
               </button>
-              <button
-                :disabled="invalid"
-                type="submit"
-                class="primary"
-                style="margin-left: 10px;"
-              >
+              <button :disabled="invalid" type="submit" class="primary" style="margin-left: 10px;">
                 Next
               </button>
             </div>
@@ -273,15 +199,11 @@
                 <th class="primary">Interest</th>
                 <th class="primary">Principal</th>
               </tr>
-              <tr
-                v-for="paymentScheduleItem in paymentScheduleLeft"
-                :key="paymentScheduleItem.month"
-                :class="{
-                  paid:
-                    paymentScheduleItem.transactionId ===
-                    newScheduleItemTransactionId,
-                }"
-              >
+              <tr v-for="paymentScheduleItem in paymentScheduleLeft" :key="paymentScheduleItem.month" :class="{
+                paid:
+                  paymentScheduleItem.transactionId ===
+                  newScheduleItemTransactionId,
+              }">
                 <td class="text-left">
                   {{ paymentScheduleItem.date | date }}
                 </td>
@@ -296,9 +218,9 @@
                 </td>
                 <td class="text-left">
                   {{
-                    (paymentScheduleItem.interest +
-                      paymentScheduleItem.pastDueInterest)
-                      | currency
+                  (paymentScheduleItem.interest +
+                  paymentScheduleItem.pastDueInterest)
+                  | currency
                   }}
                 </td>
                 <td class="text-left">
@@ -308,19 +230,10 @@
             </tbody>
           </table>
           <div style="margin-top: 15px;">
-            <button
-              @click="goToPreviewPayment"
-              class="secondary"
-              style="margin-right: 10px;"
-            >
+            <button @click="goToPreviewPayment" class="secondary" style="margin-right: 10px;">
               Back
             </button>
-            <button
-              @click="submitPayment"
-              style="margin-left: 10px;"
-              class="primary"
-              :disabled="isLoading"
-            >
+            <button @click="submitPayment" style="margin-left: 10px;" class="primary" :disabled="isLoading">
               <span v-if="isPaymentToday">Submit Payment</span>
               <span v-else>Schedule Payment</span>
               <b-spinner small v-show="isLoading"></b-spinner>
@@ -381,6 +294,7 @@ export default Vue.extend({
   data() {
     return {
       modal: false,
+      makePaymentMethodVia: null as null | string,
       previewPaymentComponent: false,
       previewNewScheduleComponent: false,
       isMonthlyPayment: true,
@@ -401,6 +315,7 @@ export default Vue.extend({
       isLoading: false,
       mask: currencyMask,
       val: false,
+      allPaymentMethods: [] as any,
       disabledDates: {
         to: moment()
           .startOf("day")
@@ -446,6 +361,23 @@ export default Vue.extend({
       //if(this.val != true){
       this.goToNewSchedule();
       //}
+    },
+    onSelectPaymentMethod(event: any) {
+      this.makePaymentMethodVia = event.target?.value;
+    },
+    showAccountList(data: any) {
+      let value = null;
+      if (data?.paymentType === 'ACH') {
+        value = `${data.bankName} - ********${data.accountNumber
+          .split("")
+          .reverse()
+          .slice(0, 4)
+          .join("")}`
+      } else {
+        value = `${data.nameOnCard} - ${data.cardNumberLastFour}`
+      }
+      return value
+
     },
     async showPopup() {
       await this.$swal({
@@ -543,7 +475,7 @@ export default Vue.extend({
       this.previewResult = previewResult;
       this.previewResults = previewResult;
     },
-    hidePreviewPayment: async function() {
+    hidePreviewPayment: async function () {
       this.modal = false;
       this.previewPaymentComponent = false;
       this.previewNewScheduleComponent = false;
@@ -625,9 +557,10 @@ export default Vue.extend({
       try {
         this.isLoading = true;
         await adminDashboardRequests.submitPayment(this.screenTrackingId, {
-          paymentMethodToken: this.selectedCard,
+          paymentMethodToken: '',
           amount: this.amountToNumber,
           paymentDate: this.parsedPaymentDate,
+          paymentVia: this.makePaymentMethodVia,
         });
         this.isLoading = false;
         await this.$swal({
@@ -635,8 +568,8 @@ export default Vue.extend({
           text: this.isPaymentToday
             ? "Payment successfully submitted."
             : `Payment sucessfully scheduled to ${moment(this.paymentDate)
-                .startOf("day")
-                .format("MM/DD/YYYY")}`,
+              .startOf("day")
+              .format("MM/DD/YYYY")}`,
           icon: "success",
         });
 
@@ -733,19 +666,20 @@ export default Vue.extend({
     const {
       data: userBankAccounts,
     } = await adminDashboardRequests.listUserBanks(this.screenTrackingId);
-
     this.bankAccounts = userBankAccounts;
 
     this.reloadPage();
     const allPaymentMethods = [...data, ...userBankAccounts];
-
+    this.allPaymentMethods = allPaymentMethods;
     if (data && data.length > 0) {
       this.userCards = data.filter(
         (card: any) => !isCardExpired(card.cardExpiration)
       );
       this.selectedCard = allPaymentMethods.find(
         (card: any) => card.isDefault
-      ).paymentMethodToken;
+      )._id;
+      this.makePaymentMethodVia = this.selectedCard;
+
     }
   },
 });
@@ -759,6 +693,7 @@ button {
   border-radius: 30px;
   padding: 10px;
 }
+
 button:focus {
   outline: none;
 }
@@ -771,6 +706,7 @@ button:focus {
   padding-left: 20px;
   border: 1px solid #000;
 }
+
 .make-payment-btn-primary {
   background-color: #ea4c89;
   color: white;
@@ -806,6 +742,7 @@ button:focus {
 .text-right {
   text-align: right;
 }
+
 .text-left {
   text-align: left;
 }
@@ -814,15 +751,18 @@ table {
   width: 100%;
   border: 1px solid #000;
 }
+
 td {
   border: 1px solid #000;
   padding: 10px;
 }
+
 th {
   border: 1px solid #000;
   padding: 10px;
 }
-tr > :first-child {
+
+tr> :first-child {
   font-weight: bold;
 }
 

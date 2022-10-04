@@ -22,22 +22,22 @@
      </div>
     <ActionTemplate
       v-if="currentStatus === 'in-repayment delinquent1'"
-      title="1-30 Day Delinquent"
+      title="1-4 Week Delinquent"
       :rows="rows"
     />
     <ActionTemplate
       v-if="currentStatus === 'in-repayment delinquent2'"
-      title="31-60 Day Delinquent"
+      title="5-8 Week Delinquent"
       :rows="rows"
     />
     <ActionTemplate
       v-if="currentStatus === 'in-repayment delinquent3'"
-      title="61-90 Day Delinquent"
+      title="9-12 Week Delinquent"
       :rows="rows"
     />
     <ActionTemplate
       v-if="currentStatus === 'in-repayment delinquent4'"
-      title="90+ Day Delinquent"
+      title="12 + Week Delinquent"
       :rows="rows"
     />
     <ActionTemplate
