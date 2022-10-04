@@ -4,6 +4,7 @@ import {
   NotFoundException,
   UnauthorizedException,
   BadRequestException,
+  HttpException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -167,13 +168,14 @@ export class PaymentService {
       );
     }
 
-    const updatepaymentManagementModel = await this.paymentManagementModel.updateOne(
-      { screenTracking: findscreenTracking._id },
-      {
-        status: 'closed',
-        canRunAutomaticPayment: false,
-      },
-    );
+    const updatepaymentManagementModel =
+      await this.paymentManagementModel.updateOne(
+        { screenTracking: findscreenTracking._id },
+        {
+          status: 'closed',
+          canRunAutomaticPayment: false,
+        },
+      );
 
     if (updatepaymentManagementModel.nModified < 1) {
       const errorMessage = `Invalid token`;
@@ -197,12 +199,13 @@ export class PaymentService {
     });
 
     paidTransaction.forEach(async (transaction) => {
-      const refundStatus = await this.loanPaymentProService.v21PaymentsRefundCard(
-        transaction.transactionId,
-        transaction.paymentRequest.invoiceId,
-        String(transaction.paymentRequest.amount),
-        request.id,
-      );
+      const refundStatus =
+        await this.loanPaymentProService.v21PaymentsRefundCard(
+          transaction.transactionId,
+          transaction.paymentRequest.invoiceId,
+          String(transaction.paymentRequest.amount),
+          request.id,
+        );
       if (refundStatus.ResponseCode == '29') {
         const refundUpdate = await this.paymentManagementModel.updateOne(
           {
@@ -325,11 +328,12 @@ export class PaymentService {
       //     collectionsAccountStatus: collectionAccountStatus,
       //   },
       // );
-      const paymentScheduleItems: IPaymentScheduleItem[] = paymentManagement.paymentSchedule.filter(
-        (scheduleItem) =>
-          moment(scheduleItem.date).startOf('day').isBefore(today) &&
-          scheduleItem.status === 'opened',
-      );
+      const paymentScheduleItems: IPaymentScheduleItem[] =
+        paymentManagement.paymentSchedule.filter(
+          (scheduleItem) =>
+            moment(scheduleItem.date).startOf('day').isBefore(today) &&
+            scheduleItem.status === 'opened',
+        );
 
       // If there is no late payments in the schedule
       if (!paymentScheduleItems || paymentScheduleItems.length <= 0) {
@@ -352,10 +356,11 @@ export class PaymentService {
           `${PaymentService.name}#movetocollections`,
           `${JSON.stringify(furthestLatePayment)}`,
         );
-        let collectionStatus: PaymentManagementDocument['collectionAssignStatus'] = await this.determineCollectionTier(
-          moment(today).diff(furthestLatePayment.date, 'day'),
-          loanPeriod,
-        );
+        let collectionStatus: PaymentManagementDocument['collectionAssignStatus'] =
+          await this.determineCollectionTier(
+            moment(today).diff(furthestLatePayment.date, 'day'),
+            loanPeriod,
+          );
         this.logger.log(
           '\n\nPayment management move to collections paymentScheduleItems',
           `${PaymentService.name}#movetocollections`,
@@ -368,9 +373,10 @@ export class PaymentService {
         if (collectionStatus != '') {
           collectionAccountStatus = 'WAITING_TO_COLLECT';
         }
-        let updateStatus: PaymentManagementDocument['status'] = await this.determineDelinquentTier(
-          moment(today).diff(furthestLatePayment.date, 'day'),
-        );
+        let updateStatus: PaymentManagementDocument['status'] =
+          await this.determineDelinquentTier(
+            moment(today).diff(furthestLatePayment.date, 'day'),
+          );
         if (status.includes('Collections')) {
           updateStatus =
             findscreenTracking.offerData.downPayment == 0
@@ -714,13 +720,14 @@ export class PaymentService {
   ) {
     try {
       //console.log('PSK Payment Success');
+      const address = `${user.street} ${user.state} ${user.city}`;
       const baseUrl = this.configService.get<string>('VUE_APP_URL');
       const html = await this.nunjucksService.htmlToString(
         'emails/application-paymentsuccess.html',
         {
           userName: `${user.firstName} ${user.lastName}`,
           amount: paymentDoc.amount,
-          location: location,
+          location: location || address,
           link: `${baseUrl}/login`,
         },
       );
@@ -745,7 +752,6 @@ export class PaymentService {
       throw error;
     }
   }
-
   async paymentFailure(user: User, amount: number, message: string) {
     try {
       //console.log('PSK Payment Success', amount);
@@ -784,15 +790,14 @@ export class PaymentService {
   async makePayment(
     // PSK Updated
     paymentManagement: PaymentManagementDocument,
-    paymentMethodToken: string,
+    paymentVia: string,
     amount: number,
     requestId?: string,
   ) {
-    const paymentNextValue: CountersDocument = await this.countersService.getNextSequenceValue(
-      'payment',
-      requestId,
-    );
-    const practiceManagement = paymentManagement.practiceManagement as PracticeManagementDocument;
+    const paymentNextValue: CountersDocument =
+      await this.countersService.getNextSequenceValue('payment', requestId);
+    const practiceManagement =
+      paymentManagement.practiceManagement as PracticeManagementDocument;
     const user = paymentManagement.user as UserDocument;
     const findUser = await this.userModel.findOne({
       _id: user._id,
@@ -806,8 +811,8 @@ export class PaymentService {
     const paymentObj = {
       amount,
       paymentReference: `PMT_${paymentNextValue.sequenceValue}`,
-      paymentManagement: paymentManagement._id,
-      practiceManagement: practiceManagement._id,
+      paymentManagement: paymentManagement?._id,
+      practiceManagement: practiceManagement?._id,
       status: 'pending',
       user: user._id,
       type: 'ACH',
@@ -815,15 +820,46 @@ export class PaymentService {
     };
     const payment: PaymentDocument = new this.paymentModel(paymentObj);
     await payment.save();
+
+    const paymentData = await this.loanPaymentProCardTokenModel.findById({
+      _id: paymentVia,
+    });
+    const { paymentMethodToken, paymentType } = paymentData;
     let cardSale: any;
     try {
-      cardSale = await this.paymentManagementService.makePaymentFlexPayACH(
-        { amount, screenTrackingId: paymentManagement.screenTracking, paymentMethodToken },
-        requestId,
-      );
+      if (paymentType === 'ACH') {
+        if (!paymentMethodToken) {
+          throw new HttpException('Payment Token Not Found', 404);
+        }
 
-      if (!cardSale.ok) {
-        throw cardSale.error || 'Error processing payment';
+        cardSale = await this.paymentManagementService.makePaymentFlexPayACH(
+          {
+            amount,
+            screenTrackingId: paymentManagement.screenTracking,
+            paymentMethodToken,
+            paymentRef: payment.paymentReference,
+          },
+          requestId,
+        );
+
+        if (!cardSale.ok) {
+          throw cardSale.error || 'Error processing payment';
+        }
+      } else if (paymentType === 'CARD') {
+        const payload = {
+          amount,
+          screenTrackingId: findscreenTracking._id,
+          paymentVia,
+          paymentData,
+        };
+        const cardResponse =
+          await this.paymentManagementService.chargePaymentFlexPayCard(
+            payload,
+            requestId,
+          );
+        if (!cardResponse.ok) {
+          throw new HttpException(cardResponse.error, 500);
+        }
       }
 
       payment.transactionMessage =
@@ -836,7 +872,7 @@ export class PaymentService {
         findUser,
         findscreenTracking,
         payment,
-        practiceManagement.location,
+        practiceManagement?.location,
       );
       //Payment transaction success email
     } catch (error) {
@@ -851,6 +887,7 @@ export class PaymentService {
       throw error;
     }
 
+    await payment.save();
     return payment;
   }
 
@@ -867,11 +904,10 @@ export class PaymentService {
       requestId,
       { user, screenTracking, amount, paymentMethodToken },
     );
-    const paymentManagement: PaymentManagementDocument = await this.paymentManagementModel.findOne(
-      {
+    const paymentManagement: PaymentManagementDocument =
+      await this.paymentManagementModel.findOne({
         user,
-      },
-    );
+      });
     if (!paymentManagement) {
       this.logger.error(
         'Payment management not found.',
@@ -1134,11 +1170,10 @@ export class PaymentService {
   ) {
     const { screenTracking } = makePaymentDto;
     let { amount, paymentDate } = makePaymentDto;
-    const paymentManagement: PaymentManagementDocument | null = await this.paymentManagementModel.findOne(
-      {
+    const paymentManagement: PaymentManagementDocument | null =
+      await this.paymentManagementModel.findOne({
         screenTracking,
-      },
-    );
+      });
     if (!paymentManagement) {
       throw new NotFoundException(
         this.appService.errorHandler(
@@ -1195,7 +1230,7 @@ export class PaymentService {
   }
 
   async submitPayment(submitPaymentDto: SubmitPaymentDto, requestId: string) {
-    const { paymentMethodToken, screenTracking } = submitPaymentDto;
+    const { paymentMethodToken, screenTracking, paymentVia } = submitPaymentDto;
     let { amount, paymentDate } = submitPaymentDto;
     const today = moment().startOf('day').toDate();
     const dateBoundary = moment(today).add(2, 'months').toDate();
@@ -1212,11 +1247,10 @@ export class PaymentService {
       paymentDate = today;
     }
 
-    const paymentManagement: PaymentManagementDocument | null = await this.paymentManagementModel.findOne(
-      {
+    const paymentManagement: PaymentManagementDocument | null =
+      await this.paymentManagementModel.findOne({
         screenTracking,
-      },
-    );
+      });
     if (!paymentManagement) {
       throw new NotFoundException(
         this.appService.errorHandler(
@@ -1257,7 +1291,7 @@ export class PaymentService {
     if (moment(paymentDate).startOf('day').isSame(today, 'day')) {
       const payment: PaymentDocument = await this.makePayment(
         paymentManagement,
-        paymentMethodToken,
+        paymentVia,
         amount,
         requestId,
       );
@@ -1306,11 +1340,10 @@ export class PaymentService {
       `${PaymentService.name}#promisetoPay`,
     );
 
-    const paymentManagement: PaymentManagementDocument | null = await this.paymentManagementModel.findOne(
-      {
+    const paymentManagement: PaymentManagementDocument | null =
+      await this.paymentManagementModel.findOne({
         _id: paymentId,
-      },
-    );
+      });
     if (!paymentManagement) {
       throw new NotFoundException(
         this.appService.errorHandler(
@@ -1376,11 +1409,10 @@ export class PaymentService {
     requestId: string,
   ) {
     try {
-      const paymentManagement: PaymentManagementDocument | null = await this.paymentManagementModel.findOne(
-        {
+      const paymentManagement: PaymentManagementDocument | null =
+        await this.paymentManagementModel.findOne({
           _id: paymentManagementId,
-        },
-      );
+        });
       if (!paymentManagement) {
         throw new NotFoundException(
           this.appService.errorHandler(
@@ -1433,11 +1465,10 @@ export class PaymentService {
     requestId: string,
   ) {
     try {
-      const paymentManagement: PaymentManagementDocument | null = await this.paymentManagementModel.findOne(
-        {
+      const paymentManagement: PaymentManagementDocument | null =
+        await this.paymentManagementModel.findOne({
           _id: paymentManagementId,
-        },
-      );
+        });
       if (!paymentManagement) {
         throw new NotFoundException(
           this.appService.errorHandler(
@@ -1464,9 +1495,8 @@ export class PaymentService {
       }
 
       promiseArray[promiseIndex].contactScheduleReminderAmount = amount;
-      promiseArray[promiseIndex].contactScheduleReminderDate = moment(
-        newPromiseDate,
-      ).toDate();
+      promiseArray[promiseIndex].contactScheduleReminderDate =
+        moment(newPromiseDate).toDate();
       const paymentUpdate = await this.paymentManagementModel.updateOne(
         { _id: paymentManagementId },
         { promiseToPay: promiseArray },
@@ -1493,11 +1523,10 @@ export class PaymentService {
       paymentDate = today;
     }
 
-    const paymentManagement: PaymentManagementDocument | null = await this.paymentManagementModel.findOne(
-      {
+    const paymentManagement: PaymentManagementDocument | null =
+      await this.paymentManagementModel.findOne({
         screenTracking,
-      },
-    );
+      });
     if (!paymentManagement) {
       throw new NotFoundException(
         this.appService.errorHandler(
@@ -1589,9 +1618,10 @@ export class PaymentService {
           };
 
           // find next payment date
-          const nextPaymentScheduleItem: IPaymentScheduleItem = paymentManagement.paymentSchedule.find(
-            (scheduleItem) => scheduleItem.status === 'opened',
-          );
+          const nextPaymentScheduleItem: IPaymentScheduleItem =
+            paymentManagement.paymentSchedule.find(
+              (scheduleItem) => scheduleItem.status === 'opened',
+            );
           if (nextPaymentScheduleItem) {
             updatedPaymentManagement.nextPaymentSchedule =
               nextPaymentScheduleItem.date;
@@ -1696,11 +1726,10 @@ export class PaymentService {
       paymentDate = today;
     }
 
-    const paymentManagement: PaymentManagementDocument | null = await this.paymentManagementModel.findOne(
-      {
+    const paymentManagement: PaymentManagementDocument | null =
+      await this.paymentManagementModel.findOne({
         screenTracking,
-      },
-    );
+      });
     if (!paymentManagement) {
       throw new NotFoundException(
         this.appService.errorHandler(
@@ -1822,6 +1851,7 @@ export class PaymentService {
         2,
       ),
       fees: ledger.accruedFeesBalance,
+      nsfFee: ledger.accruedFeesBalance,
       interest: isPromoAmount ? 0 : ledger.cycleAccruedInterest,
       paidFees: paidBalances.fees,
       paidPastDueInterest: paidBalances.unpaidInterest,
@@ -2132,7 +2162,7 @@ export class PaymentService {
     amount: number,
     paymentManagement: PaymentManagementDocument,
     requestId: string,
-    lateFee?: Date,
+    lateFeeThreshold?: Date,
     lateFeeAmount?: number,
     promo?: bool,
     ledger?: ILedger,
@@ -2145,30 +2175,25 @@ export class PaymentService {
         requestId,
       );
     }
-    // this.logger.log(
-    //   'Adjusting schedule with params:',
-    //   `${LedgerService.name}#adjustSchedule`,
-    //   requestId,
-    //   { amount, paymentManagement },
-    // );
+
     const {
       paymentSchedule,
-      interestApplied, // 0
-      promoPaymentAmount, // 0
-      promoStatus, // unavailable
+      interestApplied,
+      promoPaymentAmount,
+      promoStatus,
     } = paymentManagement;
 
-    let { apr } = paymentManagement; // 399
+    let { apr } = paymentManagement;
     if (apr == 0) {
       apr = interestApplied;
     }
     const newPaymentSchedule: IPaymentScheduleItem[] = [];
     const nextScheduleItem = paymentSchedule.find(
       (scheduleItem) => scheduleItem.status === 'opened',
-    ); // {}
-    let principalPayoff = this.toFixed(ledger.principalBalance, 2); // 1000
-    let nextUnpaidInterest = this.toFixed(ledger.unpaidInterestBalance, 2); //0
-    let recalculatedInterest = ledger.cycleAccruedInterest; // 0
+    );
+    let principalPayoff = this.toFixed(ledger.principalBalance, 2);
+    let nextUnpaidInterest = this.toFixed(ledger.unpaidInterestBalance, 2);
+    let recalculatedInterest = ledger.cycleAccruedInterest;
     let accruedInterestDate = moment(nextScheduleItem.date)
       .startOf('day')
       .toDate();
@@ -2190,11 +2215,17 @@ export class PaymentService {
 
     while (principalPayoff > 0) {
       // empty schedule
+      const oldScheduleItem = paymentSchedule.find(
+        (scheduleItem) =>
+          scheduleItem.status === 'opened' &&
+          moment(scheduleItem.date).isSame(accruedInterestDate),
+      );
       const newScheduleItem: IPaymentScheduleItem = {
         amount,
         date: accruedInterestDate,
         endPrincipal: 0,
-        fees: 0,
+        fees: oldScheduleItem.fees || 0,
+        nsfFee: oldScheduleItem.nsfFee || 0,
         interest: 0,
         week,
         paidFees: 0,
@@ -2208,25 +2239,28 @@ export class PaymentService {
         startPrincipal: 0,
         status: 'opened',
         transactionId: nanoid(10),
+        nsfFeeApplied: oldScheduleItem.nsfFeeApplied,
+        lateFeeApplied: oldScheduleItem.lateFeeApplied,
       };
+
       // unpaid interest
       const nextInterestPayment =
         nextUnpaidInterest >= newScheduleItem.amount
           ? newScheduleItem.amount
-          : nextUnpaidInterest; // 0
-      newScheduleItem.interest = nextInterestPayment; // 0
+          : nextUnpaidInterest;
+      newScheduleItem.interest = nextInterestPayment;
       newScheduleItem.principal = this.toFixed(
         newScheduleItem.amount - newScheduleItem.interest,
         2,
-      ); // 85
+      );
       nextUnpaidInterest = this.toFixed(
         nextUnpaidInterest - newScheduleItem.interest,
         2,
-      ); // 0
+      );
 
       // accrued interest
       const accruedInterestDays = moment(accruedInterestDate)
-        .add(1, 'month')
+        .add(1, 'week')
         .startOf('day')
         .diff(moment(accruedInterestDate).startOf('day'), 'days');
       let isPromoAmount = false;
@@ -2242,25 +2276,25 @@ export class PaymentService {
         : this.toFixed(
             ((principalPayoff * apr) / 100 / 365) * accruedInterestDays,
             2,
-          ); // ((1000 * 399 ) / 100 / 365) = 327.95
+          );
+
       const itemInterestPayment = this.toFixed(
         newScheduleItem.interest >= newScheduleItem.principal
           ? newScheduleItem.principal + ledger.unpaidInterestBalance
           : newScheduleItem.interest,
         2,
-      ); //7.64
-      console.log('itemInterestPayment====>', itemInterestPayment);
+      );
+
       newScheduleItem.interest = this.toFixed(
         nextUnpaidInterest + itemInterestPayment,
         2,
-      ); // 7.67
+      );
       newScheduleItem.principal = this.toFixed(
         itemInterestPayment >= newScheduleItem.principal
-          ? 0
+          ? newScheduleItem.principal
           : newScheduleItem.principal - itemInterestPayment,
         2,
-      ); // 0
-
+      );
       if (newScheduleItem.principal > principalPayoff) {
         newScheduleItem.principal = principalPayoff;
         newScheduleItem.amount = this.toFixed(
@@ -2275,15 +2309,20 @@ export class PaymentService {
         2,
       );
 
-      if (moment(newScheduleItem.date).startOf('day').isSameOrBefore(lateFee)) {
-        if (newScheduleItem.fees == 0) {
+      if (
+        moment(newScheduleItem.date)
+          .startOf('day')
+          .isSameOrBefore(lateFeeThreshold)
+      ) {
+        if (newScheduleItem.fees == 0 && !oldScheduleItem?.lateFeeApplied) {
           newScheduleItem.fees += lateFeeAmount;
           newScheduleItem.amount += lateFeeAmount;
+          newScheduleItem.lateFeeApplied = true;
         }
       }
       newPaymentSchedule.push(newScheduleItem);
       accruedInterestDate = moment(accruedInterestDate)
-        .add(1, 'month')
+        .add(1, 'week')
         .startOf('day')
         .toDate();
       recalculatedInterest = this.toFixed(
@@ -2294,13 +2333,6 @@ export class PaymentService {
     }
 
     const response = newPaymentSchedule;
-    // this.logger.log(
-    //   'Adjusted payment management:',
-    //   `${LedgerService.name}#adjustSchedule`,
-    //   requestId,
-    //   response,
-    // );
-
     return response;
   }
 
@@ -2385,5 +2417,63 @@ export class PaymentService {
       findscreenTracking._id,
       findUser,
     );
+  }
+
+  async handleReturnedPayment(
+    screenTrackingId: string,
+    paymentRef: string,
+    requestId = '',
+  ) {
+    const paymentManagementData = await this.paymentManagementModel
+      .findOne({
+        screenTracking: screenTrackingId,
+      })
+      .populate(['user', 'screenTracking']);
+    if (paymentManagementData) {
+      const { paymentSchedule } = paymentManagementData;
+
+      const newPaymentSchedule = [...paymentSchedule];
+
+      // const paymentIndex = paymentSchedule.findIndex(
+      //   (payment) => payment.paymentReference === paymentRef,
+      // );
+
+      const paymentIndex = paymentSchedule.findIndex(
+        (payment) => payment.paymentReference === paymentRef,
+      );
+
+      const currentPayment = { ...paymentSchedule[paymentIndex] };
+
+      const failedPayment = Object.create({
+        ...currentPayment,
+        paidPrincipal: 0,
+        endPrincipal: currentPayment.startPrincipal,
+        status: 'failed',
+      }) as IPaymentScheduleItem;
+
+      const returnedPayment = Object.create({
+        ...currentPayment,
+        paymentReference: `${currentPayment.paymentReference} - RETURNED`,
+        status: 'opened',
+        paidPrincipal: 0,
+        endPrincipal: currentPayment.startPrincipal,
+      }) as IPaymentScheduleItem;
+
+      newPaymentSchedule.splice(paymentIndex, 1, failedPayment);
+      newPaymentSchedule.push(returnedPayment);
+
+      await this.paymentManagementModel.findByIdAndUpdate(
+        paymentManagementData._id,
+        {
+          paymentSchedule: newPaymentSchedule,
+        },
+      );
+
+      await this.paymentFailure(
+        paymentManagementData.user as UserDocument,
+        currentPayment.amount,
+        'ACH payment being returned',
+      );
+    }
   }
 }

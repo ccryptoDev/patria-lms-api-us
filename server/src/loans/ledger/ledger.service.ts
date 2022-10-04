@@ -86,7 +86,7 @@ export class LedgerService {
       if (
         moment(scheduleItem.date).isBefore(
           moment(paymentManagement.nextPaymentSchedule),
-          'month',
+          'week',
         )
       ) {
         this.resetPeriodAmounts(ledger);
@@ -312,7 +312,7 @@ export class LedgerService {
     if (
       moment(scheduleItem.date).isBefore(
         moment(this.paymentManagement1.nextPaymentSchedule),
-        'month',
+        'week',
       )
     ) {
     }

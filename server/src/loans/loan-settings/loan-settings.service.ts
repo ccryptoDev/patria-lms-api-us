@@ -11,7 +11,18 @@ export class LoanSettingsService {
   ) {}
 
   async getLoanSettings(): Promise<LoanSettingsDocument | null> {
-    const LoanSettings = await this.loanSettingsModel.findOne({});
+    let LoanSettings = await this.loanSettingsModel.findOne({});
+
+    if (!LoanSettings) {
+      // create default settings
+      LoanSettings = await this.loanSettingsModel.create({
+        lateFeeGracePeriod: 2,
+        nsfFee: 20,
+        delinquencyPeriod: 2,
+        lateFee: 20,
+      });
+    }
+
     return LoanSettings;
   }
 

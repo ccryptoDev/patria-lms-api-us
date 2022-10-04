@@ -723,18 +723,16 @@ export class AdminDashboardController {
     }
   }
 
-  @Patch('users/cards/:paymentMethodToken')
+  @Patch('users/cards/:paymentId')
   @Roles(Role.SuperAdmin, Role.UserServicing)
   @UseGuards(JwtAuthGuard, RolesGuard)
   async updateLoanPaymentProCard(
-    @Param('paymentMethodToken') paymentMethodToken: string,
+    @Param('paymentId') paymentId: string,
     @Req() request: Request & { user: AdminJwtPayload },
   ) {
     try {
-      await this.loanPaymentProService.updateCard(
-        paymentMethodToken,
-        request.id,
-      );
+      // 633491c416506a95c4b30471
+      await this.loanPaymentProService.updateCard(paymentId, request.id);
     } catch (error) {
       this.logger.error(
         'Error:',
@@ -1522,6 +1520,111 @@ export class AdminDashboardController {
     }
   }
 
+  @Post('loans/forgiveNsfFee/:screenTrackingId')
+  @Roles(Role.SuperAdmin, Role.UserServicing)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  async forgiveNsfFee(
+    @Param('screenTrackingId') screenTrackingId: string,
+    @Req() request: Request & { user: AdminJwtPayload },
+  ) {
+    try {
+      const response = await this.adminDashboardService.forgiveNsffee(
+        screenTrackingId,
+        request.id,
+      );
+
+      const { id, userName, email, role, practiceManagement } = request.user;
+      await this.logActivityService.createLogActivity(
+        request,
+        logActivityModuleNames.PAYMENT_SCHEDULE,
+        `${request.user.email} - ${role} Forgive Nsffee for user.`,
+        {
+          id,
+          email,
+          role,
+          userName,
+          practiceManagementId: practiceManagement,
+          screenTrackingId,
+        },
+        undefined,
+        undefined,
+        screenTrackingId,
+      );
+      this.logger.log(
+        'Response status 201',
+        `${AdminDashboardController.name}#forgiveNsfFee`,
+        request.id,
+      );
+      return response;
+    } catch (error) {
+      this.logger.error(
+        'Error:',
+        `${AdminDashboardController.name}#forgiveNsfFee`,
+        request.id,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  @Post('loans/forgiveSingleNsfFee/:screenTrackingId')
+  @Roles(Role.SuperAdmin, Role.UserServicing)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  async forgiveSingleNsfFee(
+    @Param('screenTrackingId') screenTrackingId: string,
+    @Body() payment: any,
+    @Req() request: Request & { user: AdminJwtPayload },
+  ) {
+    try {
+      const splitDate = payment.date
+        .toString()
+        .split('T')[0]
+        .split('-')
+        .reverse()
+        .join('/')
+        .split(/\//);
+      const finalDate = [splitDate[1], splitDate[0], splitDate[2]].join('/');
+
+      const response = await this.adminDashboardService.forgiveSingleNsffee(
+        screenTrackingId,
+        request.id,
+        payment.transactionId,
+      );
+
+      const { id, userName, email, role, practiceManagement } = request.user;
+      await this.logActivityService.createLogActivity(
+        request,
+        logActivityModuleNames.PAYMENT_SCHEDULE,
+        `${request.user.email} - ${role} Forgive Nsffee for user with amount of ${payment.amount} on date ${finalDate}.`,
+        {
+          id,
+          email,
+          role,
+          userName,
+          practiceManagementId: practiceManagement,
+          screenTrackingId,
+        },
+        undefined,
+        undefined,
+        screenTrackingId,
+      );
+      this.logger.log(
+        'Response status 201',
+        `${AdminDashboardController.name}#forgiveSingleNsfFee`,
+        request.id,
+      );
+      return response;
+    } catch (error) {
+      this.logger.error(
+        'Error:',
+        `${AdminDashboardController.name}#forgiveSingleNsfFee`,
+        request.id,
+        error,
+      );
+      throw error;
+    }
+  }
+
   @Post('loans/deferPayment/:screenTrackingId')
   @Roles(Role.SuperAdmin, Role.UserServicing)
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -1562,6 +1665,37 @@ export class AdminDashboardController {
       this.logger.error(
         'Error:',
         `${AdminDashboardController.name}#forgiveLateFee`,
+        request.id,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  @Post('loans/:screenTrackingId/re-amortize')
+  @Roles(Role.SuperAdmin)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  async reRunAmortization(
+    @Param('screenTrackingId') screenTrackingId: string,
+    @Req() request: Request & { user: AdminJwtPayload },
+  ) {
+    try {
+      const newPaymentSchedule =
+        await this.adminDashboardService.reRunAmortization(
+          screenTrackingId,
+          request.id,
+        );
+      this.logger.log(
+        'Response:',
+        `${AdminDashboardController.name}#reRunAmortization::response`,
+        request.id,
+        { newPaymentSchedule },
+      );
+      return { newPaymentSchedule };
+    } catch (error) {
+      this.logger.error(
+        'Error:',
+        `${AdminDashboardController.name}#reRunAmortization::error`,
         request.id,
         error,
       );

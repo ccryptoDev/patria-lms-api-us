@@ -27,11 +27,11 @@ export class Payment {
   paymentReference: string;
 
   @Prop({
-    required: true,
+    required: false,
     type: mongoose.Schema.Types.ObjectId,
     ref: 'PracticeManagement',
   })
-  practiceManagement: string | PracticeManagementDocument;
+  practiceManagement?: string | PracticeManagementDocument;
 
   @Prop({
     required: true,

@@ -22,10 +22,10 @@ export class LoanSettings {
   delinquencyPeriod: number;
 
   @Prop()
-  eventsUrl: string;
+  eventsUrl?: string;
 
   @Prop()
-  eventsAuthToken: string;
+  eventsAuthToken?: string;
 }
 
 export const LoanSettingsSchema = SchemaFactory.createForClass(LoanSettings);

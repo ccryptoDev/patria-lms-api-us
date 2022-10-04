@@ -22,5 +22,9 @@ export class SubmitPaymentDto {
   @IsDateString()
   paymentDate: Date;
 
+  @IsString()
+  @IsOptional()
+  paymentVia?: string;
+
   screenTracking?: string;
 }
