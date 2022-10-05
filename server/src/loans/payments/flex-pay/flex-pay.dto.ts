@@ -97,6 +97,7 @@ export interface FlexTransactionCommit {
     userId: string | UserDocument;
     screenTrackingId: string | ScreenTrackingDocument;
     paymentType: 'ACH' | 'CARD';
+    paymentRef?: string;
   };
 }
 
@@ -110,4 +111,10 @@ export interface DisbursePayload {
 export interface DisburseBankData {
   routingNumber: string;
   accountNumber: string;
+}
+
+export enum FLEX_CHARGE_STATUS {
+  'SETTLED' = 'settled',
+  'FAILED' = 'failed',
+  'PENDING' = 'pending',
 }

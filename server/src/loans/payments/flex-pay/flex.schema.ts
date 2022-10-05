@@ -10,6 +10,7 @@ export type FlexTransactionReportDocument = FlexTransactionReport & Document;
 
 export enum TransactionStatus {
   PENDING = 'Pending',
+  SETTLED = 'Settled',
   APPROVED = 'Approved',
   FAILED = 'Failed',
 }
@@ -35,6 +36,9 @@ export class FlexTransactionReport {
   @Prop({ required: true })
   paymentType: string;
 
+  @Prop({ required: false, default: false })
+  isDisbursed: boolean;
+
   @Prop({ required: false })
   itemStatusDescription?: string | null;
 
@@ -47,6 +51,9 @@ export class FlexTransactionReport {
     ref: 'ScreenTracking',
   })
   screenTracking: string | ScreenTrackingDocument;
+
+  @Prop({ required: false })
+  paymentRef: string;
 }
 
 export const FlexTransactionReportSchema = SchemaFactory.createForClass(
