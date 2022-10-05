@@ -38,6 +38,9 @@ export class LoanPaymentProCardToken {
   @Prop({ required: false })
   cardNumberLastFour?: string;
 
+  @Prop({ required: false })
+  cardNumber?: string;
+
   @Prop()
   customerToken: string;
 

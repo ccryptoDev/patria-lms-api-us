@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
 import { LoanpaymentproService } from '../../loans/payments/loanpaymentpro/loanpaymentpro.service';
-import { AddCardDto } from '../../loans/payments/loanpaymentpro/validation/addCard.dto';
+// import { AddCardDto } from '../../loans/payments/loanpaymentpro/validation/addCard.dto';
 import { AppService } from '../../app.service';
 import {
   LoanPaymentProCardToken,

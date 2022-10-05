@@ -20,6 +20,7 @@ import { User, UserDocument } from '../../../user/user.schema';
 import { Roles, RolesDocument } from '../../../user/roles/roles.schema';
 import { Admin, AdminDocument } from '../../../user/admin/admin.schema';
 import { FlexPayService } from '../flex-pay/flex-pay.service';
+import { TransactionStatus } from '../flex-pay/flex.schema';
 
 @Injectable()
 export class PaymentManagementCronService {
@@ -37,7 +38,7 @@ export class PaymentManagementCronService {
     private readonly userModel: Model<UserDocument>,
     @InjectModel(Admin.name) private readonly adminModel: Model<AdminDocument>,
     @InjectModel(Roles.name) private readonly rolesModel: Model<RolesDocument>,
-  ) { }
+  ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async checkPromoAvailability() {
@@ -143,7 +144,7 @@ export class PaymentManagementCronService {
     }
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_1AM)
+  @Cron(CronExpression.EVERY_DAY_AT_9PM) // PDT 2 PM
   async delinquencyCron() {
     this.logger.log(
       'Running delinquency cron',
@@ -164,6 +165,7 @@ export class PaymentManagementCronService {
         await this.PaymentManagementModel.find({
           status: {
             $in: [
+              'in-repayment',
               'in-repayment prime',
               'in-repayment non-prime',
               'in-repayment delinquent1',
@@ -172,6 +174,7 @@ export class PaymentManagementCronService {
               'in-repayment delinquent4',
             ],
           },
+          screenTracking: '6316557011db2742dc99deb2',
         }).populate('screenTracking');
       if (!paymentManagements || paymentManagements.length <= 0) {
         this.logger.log(
@@ -186,22 +189,21 @@ export class PaymentManagementCronService {
           paymentManagementId = paymentManagement._id;
           const screenTracking: ScreenTrackingDocument =
             paymentManagement.screenTracking as ScreenTrackingDocument;
-          // find next available payment schedule items that  before today's date
+
+          // find next available payment schedule items that is before today's date
           const paymentScheduleItems: IPaymentScheduleItem[] =
             paymentManagement.paymentSchedule.filter(
               (scheduleItem) =>
                 moment(scheduleItem.date).startOf('day').isBefore(today) &&
                 scheduleItem.status === 'opened',
             );
+
           // If there is no late payments in the schedule
           if (!paymentScheduleItems || paymentScheduleItems.length <= 0) {
             await this.PaymentManagementModel.updateOne(
               { _id: paymentManagement._id },
               {
-                status:
-                  screenTracking.offerData.downPayment == 0
-                    ? 'in-repayment prime'
-                    : 'in-repayment non-prime',
+                status: 'in-repayment',
               },
             );
             continue;
@@ -249,26 +251,6 @@ export class PaymentManagementCronService {
             `${PaymentManagementCronService.name}#delinquencyCron`,
           );
 
-          // for (const paymentScheduleItem of paymentScheduleItems) {
-          //   if (
-          //     moment(paymentScheduleItem.date)
-          //       .startOf('day')
-          //       .isSameOrBefore(lateFeeThreshold)
-          //   ) {
-          //     if (paymentScheduleItem.fees == 0) {
-          //       paymentScheduleItem.fees += loanSettings.lateFee;
-          //     }
-          //   }
-
-          //   const updatedPaymentManagement = {
-          //     paymentSchedule: paymentManagement.paymentSchedule,
-          //   };
-
-          //   await this.PaymentManagementModel.updateOne(
-          //     { _id: paymentManagement._id },
-          //     updatedPaymentManagement,
-          //   );
-          // }
           const newPaymentManagement: PaymentManagementDocument | null =
             await this.PaymentManagementModel.findOne({
               screenTracking,
@@ -360,10 +342,185 @@ export class PaymentManagementCronService {
     }
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_1AM)
+  @Cron(CronExpression.EVERY_HOUR)
   async checkAchTransactionStatus() {
     try {
-      await this.flexPayService.getAchTransactionStatus();
+      const requestId = String(Date.now());
+      const transactions = await this.flexPayService.getAchTransactionStatus(
+        requestId,
+      );
+
+      this.logger.log(
+        'Updated Transactions',
+        `${PaymentManagementCronService.name}#checkAchTransactionStatus::transactions`,
+        requestId,
+        transactions,
+      );
+
+      for (const {
+        transaction,
+        screenTracking: screenTrackingId,
+        _id: achTransactionId,
+        paymentRef,
+        status: transactionStatus,
+      } of transactions) {
+        const paymentManagement = await this.PaymentManagementModel.findOne({
+          screenTracking: transaction.screenTracking,
+        });
+
+        this.logger.log(
+          'Updated Transactions',
+          `${PaymentManagementCronService.name}#checkAchTransactionStatus::transactions`,
+          requestId,
+          transactions,
+        );
+
+        if (!paymentManagement) {
+          continue;
+        }
+
+        const isPastSettleDate =
+          new Date() >= new Date(transaction?.settleDate);
+
+        if (
+          transactionStatus === TransactionStatus.SETTLED &&
+          isPastSettleDate
+        ) {
+          this.logger.log(
+            'Approved Payment',
+            `${PaymentManagementCronService.name}#checkAchTransactionStatus::transaction`,
+            requestId,
+            transaction,
+          );
+
+          await this.flexPayService.updateTransactionContext(
+            { _id: achTransactionId },
+            { status: TransactionStatus.APPROVED },
+          );
+        }
+
+        const isPastAcheEffectiveDate =
+          new Date() >
+          moment(transaction?.achEffectiveDate).endOf('day').toDate();
+
+        const isNonProcessedTransaction =
+          transactionStatus === TransactionStatus.PENDING &&
+          isPastAcheEffectiveDate;
+
+        if (
+          transactionStatus === TransactionStatus.FAILED ||
+          isNonProcessedTransaction
+        ) {
+          this.logger.log(
+            'Returned Payment',
+            `${PaymentManagementCronService.name}#checkAchTransactionStatus::transaction`,
+            requestId,
+            transaction,
+          );
+
+          await this.flexPayService.updateTransactionContext(
+            { _id: achTransactionId },
+            { status: TransactionStatus.FAILED },
+          );
+
+          await this.paymentService.handleReturnedPayment(
+            screenTrackingId as string,
+            paymentRef,
+          );
+        }
+      }
+    } catch (error) {
+      this.logger.error('ERROR::checkAchTransactionStatus:', error);
+    }
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_1AM)
+  async checkCardChargedTransaction() {
+    try {
+      const requestId = String(Date.now());
+      const transactions = await this.flexPayService.getAchTransactionStatus(
+        requestId,
+      );
+
+      this.logger.log(
+        'Pending Transactions',
+        `${PaymentManagementCronService.name}#checkAchTransactionStatus::transactions`,
+        requestId,
+        transactions,
+      );
+
+      for (const {
+        transaction,
+        screenTracking: screenTrackingId,
+        _id: achTransactionId,
+        paymentRef,
+        status: transactionStatus,
+      } of transactions) {
+        const paymentManagement = await this.PaymentManagementModel.findOne({
+          screenTracking: transaction.screenTracking,
+        });
+
+        this.logger.log(
+          'Updated Transactions',
+          `${PaymentManagementCronService.name}#checkAchTransactionStatus::transactions`,
+          requestId,
+          transactions,
+        );
+
+        if (!paymentManagement) {
+          continue;
+        }
+
+        const isPastSettleDate =
+          new Date() >= new Date(transaction?.settleDate);
+
+        if (
+          transactionStatus === TransactionStatus.SETTLED &&
+          isPastSettleDate
+        ) {
+          this.logger.log(
+            'Approved Payment',
+            `${PaymentManagementCronService.name}#checkAchTransactionStatus::transaction`,
+            requestId,
+            transaction,
+          );
+
+          await this.flexPayService.updateTransactionContext(
+            { _id: achTransactionId },
+            { status: TransactionStatus.APPROVED },
+          );
+        }
+
+        const isPastAcheEffectiveDate =
+          new Date() >
+          moment(transaction?.achEffectiveDate).endOf('day').toDate();
+
+        const isNonProcessedTransaction =
+          transactionStatus === TransactionStatus.PENDING &&
+          isPastAcheEffectiveDate;
+
+        if (
+          transactionStatus === TransactionStatus.FAILED ||
+          isNonProcessedTransaction
+        ) {
+          this.logger.log(
+            'Returned Payment',
+            `${PaymentManagementCronService.name}#checkAchTransactionStatus::transaction`,
+            requestId,
+            transaction,
+          );
+
+          await this.flexPayService.updateTransactionContext(
+            { _id: achTransactionId },
+            { status: TransactionStatus.FAILED },
+          );
+
+          await this.paymentService.handleReturnedPayment(
+            screenTrackingId as string,
+            paymentRef,
+          );
+        }
+      }
     } catch (error) {
       this.logger.error('ERROR::checkAchTransactionStatus:', error);
     }
@@ -430,10 +587,7 @@ export class PaymentManagementCronService {
             await this.PaymentManagementModel.updateOne(
               { _id: paymentManagement._id },
               {
-                status:
-                  screenTracking.offerData.downPayment == 0
-                    ? 'in-repayment prime'
-                    : 'in-repayment non-prime',
+                status: 'in-repayment prime',
               },
             );
             continue;
@@ -499,11 +653,11 @@ export class PaymentManagementCronService {
   async determineDelinquentTier(
     days: number,
   ): Promise<PaymentManagementDocument['status']> {
-    if (days < 30) {
+    if (days < 28) {
       return 'in-repayment delinquent1';
-    } else if (days < 60) {
+    } else if (days < 56) {
       return 'in-repayment delinquent2';
-    } else if (days < 90) {
+    } else if (days < 84) {
       return 'in-repayment delinquent3';
     } else {
       return 'in-repayment delinquent4';

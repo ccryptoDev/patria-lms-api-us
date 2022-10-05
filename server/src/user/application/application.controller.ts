@@ -64,7 +64,7 @@ export class ApplicationController {
     private readonly consentService: ConsentService,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
-  ) {}
+  ) { }
 
   @Post('apply')
   async apply(
@@ -95,10 +95,11 @@ export class ApplicationController {
       );
 
       if (!user.screenTracking) {
-        const applicationReferenceData = await this.countersService.getNextSequenceValue(
-          'application',
-          request.id,
-        );
+        const applicationReferenceData =
+          await this.countersService.getNextSequenceValue(
+            'application',
+            request.id,
+          );
         const newScreenTracking = {
           user: user._id,
           applicationReference: `APL_${applicationReferenceData.sequenceValue}`,
@@ -117,9 +118,8 @@ export class ApplicationController {
           request.id,
           newScreenTracking,
         );
-        const screenTracking: ScreenTrackingDocument = new this.screenTrackingModel(
-          newScreenTracking,
-        );
+        const screenTracking: ScreenTrackingDocument =
+          new this.screenTrackingModel(newScreenTracking);
         await screenTracking.save();
         user.screenTracking = screenTracking._id;
         await user.save();
@@ -201,7 +201,7 @@ export class ApplicationController {
     );
     const response = await lambda
       .invoke({
-        FunctionName: 'getpdf-patria',
+        FunctionName: 'getpdf-staging',
         InvocationType: 'RequestResponse',
         Payload: JSON.stringify(lambdaPayload),
         LogType: 'Tail',
@@ -294,13 +294,8 @@ export class ApplicationController {
       if (process.env.NODE_ENV === 'production') {
         throw new ForbiddenException();
       }
-      const {
-        apr,
-        weeklyPayment,
-        term,
-        financedAmount,
-        loanStartDate,
-      } = payload;
+      const { apr, weeklyPayment, term, financedAmount, loanStartDate } =
+        payload;
 
       const testOffer = {
         apr: apr,
@@ -423,10 +418,9 @@ export class ApplicationController {
   ) {
     try {
       const paymentMethodToken = CardsDto.paymentMethodToken;
-      await this.loanPaymentProService.updateCard(
-        paymentMethodToken,
-        request.id,
-      );
+      const paymentId = CardsDto.paymentId;
+
+      await this.loanPaymentProService.updateCard(paymentId, request.id);
     } catch (error) {
       this.logger.error(
         'Error:',

@@ -5,6 +5,7 @@ export interface IPaymentScheduleItem {
   date: Date;
   endPrincipal: number;
   fees: number;
+  nsfFee: number;
   interest: number;
   week?: number;
   paidFees: number;
@@ -39,5 +40,6 @@ export interface IPaymentScheduleItem {
   transId?: string | undefined;
   transactionStatus?: IPaymentScheduleStatusItem[] | undefined;
   lateFeeApplied?: boolean | false;
+  nsfFeeApplied?: boolean | false;
   accuredBalance?: number | 0;
 }

@@ -1,7 +1,9 @@
 import { IsNotEmpty, IsString } from 'class-validator';
 
 export class CardsDto {
+  paymentMethodToken?: string;
+
   @IsNotEmpty()
   @IsString()
-  paymentMethodToken: string;
+  paymentId: string;
 }

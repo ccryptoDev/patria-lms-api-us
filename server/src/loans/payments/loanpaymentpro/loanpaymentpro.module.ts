@@ -25,6 +25,8 @@ import { FlexPayService } from '../flex-pay/flex-pay.service';
 import FlexPayConfig from '../flex-pay/flex-pay.config';
 import { FlexPayModule } from '../flex-pay/flexpay.module';
 import { ScreenTrackingService } from '../../../user/screen-tracking/screen-tracking.service';
+import { UserBankAccountService } from '../../../user/user-bank-account/user-bank-account.service';
+import { UserBankAccountModule } from '../../../user/user-bank-account/user-bank-account.module';
 
 @Module({
   imports: [
@@ -45,6 +47,7 @@ import { ScreenTrackingService } from '../../../user/screen-tracking/screen-trac
     PracticeManagementModule,
     ScreenTrackingModule,
     FlexPayModule,
+    forwardRef(() => UserBankAccountModule),
   ],
   providers: [
     LoanpaymentproService,
@@ -53,8 +56,9 @@ import { ScreenTrackingService } from '../../../user/screen-tracking/screen-trac
     AppService,
     LoggerService,
     FlexPayService,
+    UserBankAccountService,
   ],
   controllers: [LoanpaymentproController],
-  exports: [MongooseModule, FlexPayService],
+  exports: [MongooseModule, FlexPayService, UserBankAccountService],
 })
 export class LoanpaymentproModule { }

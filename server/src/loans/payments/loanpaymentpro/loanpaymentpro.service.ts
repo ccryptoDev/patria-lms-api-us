@@ -31,6 +31,7 @@ import {
 import { UserDocument } from '../../../user/user.schema';
 import { ValidateCardDto } from './validation/validateCard.dto';
 import { FlexPayService } from '../flex-pay/flex-pay.service';
+import { PaymentType } from '../validation/makePayment.dto';
 
 @Injectable()
 export class LoanpaymentproService {
@@ -47,7 +48,7 @@ export class LoanpaymentproService {
     private readonly configService: ConfigService,
     private readonly appService: AppService,
     private readonly flexPayService: FlexPayService,
-  ) {}
+  ) { }
 
   /**
    * Add a payment card
@@ -183,6 +184,7 @@ export class LoanpaymentproService {
       expYear,
       screenTrackingId,
       nameOnCard,
+      cardNumber,
     } = addCardDto;
     addCardDto.paymentType = 'CARD';
     let errorMessage = '';
@@ -229,9 +231,6 @@ export class LoanpaymentproService {
         requestId,
       );
       return null;
-      // throw new BadRequestException(
-      //   this.appService.errorHandler(400, errorMessage, requestId),
-      // );
     }
     const accessTokenResult = await this.flexPayService.getAccessToken();
     if (!accessTokenResult.ok) {
@@ -271,6 +270,7 @@ export class LoanpaymentproService {
       ...addCardDto,
       nameOnCard: nameOnCard || `${user.firstName} ${user.lastName}`,
       cardNumberLastFour: addCardDto.cardNumber,
+      cardNumber: cardNumber,
       // customerToken: data.yourReferenceNumber,
       // paymentMethodToken: data.tokenId,
       user: user._id,
@@ -280,12 +280,8 @@ export class LoanpaymentproService {
   }
 
   async addAchViaFlexPay(addCardDto: AddCardDto, requestId: string) {
-    const {
-      cardCode,
-      routingNumber,
-      accountNumber,
-      screenTrackingId,
-    } = addCardDto;
+    const { cardCode, routingNumber, accountNumber, screenTrackingId } =
+      addCardDto;
     let errorMessage = '';
     const screenTrackingDocument = await this.screenTrackingModel
       .findById(screenTrackingId)
@@ -438,11 +434,10 @@ export class LoanpaymentproService {
       requestId,
       { user, paymentMethodToken },
     );
-    const paymentManagement: PaymentManagementDocument = await this.paymentManagementModel.findOne(
-      {
+    const paymentManagement: PaymentManagementDocument =
+      await this.paymentManagementModel.findOne({
         user,
-      },
-    );
+      });
     if (!paymentManagement) {
       throw new NotFoundException(
         this.appService.errorHandler(
@@ -452,12 +447,11 @@ export class LoanpaymentproService {
         ),
       );
     }
-    const cardDetails: LoanPaymentProCardTokenDocument = await this.loanPaymentProCardTokenModel.findOne(
-      {
+    const cardDetails: LoanPaymentProCardTokenDocument =
+      await this.loanPaymentProCardTokenModel.findOne({
         user,
         paymentMethodToken,
-      },
-    );
+      });
     if (!cardDetails) {
       throw new NotFoundException(
         this.appService.errorHandler(
@@ -502,11 +496,10 @@ export class LoanpaymentproService {
       requestId,
       { user, paymentMethodToken, payment },
     );
-    const paymentManagement: PaymentManagementDocument = await this.paymentManagementModel.findOne(
-      {
+    const paymentManagement: PaymentManagementDocument =
+      await this.paymentManagementModel.findOne({
         user,
-      },
-    );
+      });
     if (!paymentManagement) {
       throw new NotFoundException(
         this.appService.errorHandler(
@@ -516,12 +509,11 @@ export class LoanpaymentproService {
         ),
       );
     }
-    const cardDetails: LoanPaymentProCardTokenDocument = await this.loanPaymentProCardTokenModel.findOne(
-      {
+    const cardDetails: LoanPaymentProCardTokenDocument =
+      await this.loanPaymentProCardTokenModel.findOne({
         user,
         paymentMethodToken,
-      },
-    );
+      });
     if (!cardDetails) {
       throw new NotFoundException(
         this.appService.errorHandler(
@@ -596,10 +588,15 @@ export class LoanpaymentproService {
     return cardSale;
   }
 
-  async getUserCards(screenTrackingId: string, requestId: string) {
-    const screenTracking: ScreenTrackingDocument = await this.screenTrackingModel
-      .findById(screenTrackingId)
-      .populate('user');
+  async getUserCards(
+    screenTrackingId: string,
+    requestId: string,
+    bankAccount = false,
+  ) {
+    const screenTracking: ScreenTrackingDocument =
+      await this.screenTrackingModel
+        .findById(screenTrackingId)
+        .populate('user');
     if (!screenTracking) {
       throw new NotFoundException(
         this.appService.errorHandler(
@@ -620,12 +617,10 @@ export class LoanpaymentproService {
     }
 
     const user = screenTracking.user as UserDocument;
-    const cards:
-      | LoanPaymentProCardTokenDocument[]
-      | null = await this.loanPaymentProCardTokenModel.find({
-      user,
-      paymentType: 'CARD',
-    });
+    const query: any = { user };
+    if (!bankAccount) query.paymentType = 'CARD';
+    const cards: LoanPaymentProCardTokenDocument[] | null =
+      await this.loanPaymentProCardTokenModel.find(query);
     // if (!cards || cards.length <= 0) {
     //   throw new NotFoundException(
     //     this.appService.errorHandler(
@@ -637,6 +632,7 @@ export class LoanpaymentproService {
     // }
 
     const response = cards.map((card) => {
+      const { paymentType, expMonth, expYear } = card;
       return {
         paymentMethodToken: card.paymentMethodToken,
         cardNumberLastFour: card.cardNumberLastFour,
@@ -644,8 +640,14 @@ export class LoanpaymentproService {
         firstName: card.billingFirstName,
         lastName: card.billingLastName,
         nameOnCard: card.nameOnCard,
-        cardExpiration: `${card.expMonth}/${card.expYear}`,
+        cardExpiration:
+          paymentType === PaymentType.CARD ? `${expMonth}/${expYear}` : 'N/A',
         isDefault: card.isDefault,
+        paymentType: card.paymentType,
+        routingNumber: card.routingNumber,
+        financialInstitution: card?.financialInstitution,
+        accountType: card?.accountType,
+        accountNumber: card.accountNumber,
         _id: card._id,
       };
     });
@@ -689,35 +691,35 @@ export class LoanpaymentproService {
     return data;
   }
 
-  async updateCard(paymentMethodToken: string, requestId: string) {
+  async updateCard(paymentId: string, requestId: string) {
     //Extract user_id from card
     const card = await this.loanPaymentProCardTokenModel.findOne({
-      paymentMethodToken: paymentMethodToken,
+      _id: paymentId,
     });
     const user_id = card.user;
-
     //Search for the user's cards and make the previous cards to "isDefault: false"
-    await this.loanPaymentProCardTokenModel.findOneAndUpdate(
+    const data = await this.loanPaymentProCardTokenModel.findOneAndUpdate(
       {
         user: user_id,
         isDefault: true,
       },
       {
-        $set: {
-          isDefault: false,
-        },
+        // $set: {
+        isDefault: false,
+        // },
       },
+      { upsert: true },
     );
 
     //set Default Card
     const cardToken = await this.loanPaymentProCardTokenModel.findOneAndUpdate(
       {
-        paymentMethodToken: paymentMethodToken,
+        _id: paymentId,
       },
       {
-        $set: {
-          isDefault: true,
-        },
+        // $set: {
+        isDefault: true,
+        // },
       },
     );
   }
@@ -753,6 +755,7 @@ export class LoanpaymentproService {
     const screenData = await this.screenTrackingModel.findById(
       screenTrackingId,
     );
+    console.log('screenTrackingId===', screenTrackingId);
     if (!screenData) {
       throw new NotFoundException(
         this.appService.errorHandler(

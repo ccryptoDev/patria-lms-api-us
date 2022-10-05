@@ -269,12 +269,11 @@ export class PaymentManagementService {
 
       this.logger.log(amount, 'disbursePaymentToUser#amount', requestId);
 
-      const disbursementAccountData = await this.loanPaymentProCardTokenModel.findOne(
-        {
+      const disbursementAccountData =
+        await this.loanPaymentProCardTokenModel.findOne({
           user: user.id,
           isDefault: true,
-        },
-      );
+        });
 
       this.logger.log(
         JSON.stringify(disbursementAccountData, null, 4),
@@ -403,6 +402,7 @@ export class PaymentManagementService {
           .toDate(),
         endPrincipal: item.endBalance,
         fees: 0,
+        nsfFee: 0,
         interest: item.interest,
         week: item.id,
         paidFees: 0,
@@ -526,7 +526,8 @@ export class PaymentManagementService {
 
   async makePaymentFlexPayACH(payload: any, requestId) {
     try {
-      const { amount, screenTrackingId, paymentMethodToken } = payload;
+      const { amount, screenTrackingId, paymentMethodToken, paymentRef } =
+        payload;
 
       const screenData = await this.screenTrackingModel
         .findOne({
@@ -581,11 +582,74 @@ export class PaymentManagementService {
       const achResponse = await this.flexPayService.createAchTransaction(
         achData,
         requestId,
+        paymentRef,
       );
       return achResponse;
     } catch (error) {
       this.logger.error('makePaymentFlexPayACH#error', error, requestId);
       return error;
+    }
+  }
+
+  async chargePaymentFlexPayCard(payload: any, requestId: string) {
+    try {
+      const {
+        amount,
+        screenTrackingId,
+        paymentMethodToken,
+        paymentData,
+        paymentVia,
+      } = payload;
+
+      const screenData = await this.screenTrackingModel
+        .findOne({
+          _id: screenTrackingId,
+        })
+        .populate('user')
+        .lean();
+
+      if (!screenData) {
+        throw new HttpException('Application not found', 404);
+      }
+      const userData: UserDocument | any = screenData.user;
+
+      let loanPaymentResult = paymentData;
+      if (!loanPaymentResult) {
+        loanPaymentResult = await this.loanPaymentProCardTokenModel
+          .findOne({
+            // user: userData._id,
+            _id: paymentVia,
+            paymentType: 'CARD',
+          })
+          .lean();
+      }
+      if (!loanPaymentResult) {
+        throw new HttpException('CARD Details Not found', 404);
+      }
+
+      this.logger.log(
+        'Loan Payment Pro Card Token:',
+        `${FlexPayService.name}#chargePaymentFlexPayCard::loanPaymentResult=`,
+        requestId,
+        loanPaymentResult,
+      );
+
+      const achData = {
+        user: userData,
+        cardData: loanPaymentResult,
+        screenTracking: screenData,
+        amount: amount,
+      };
+
+      const achResponse: {
+        ok: boolean;
+        data: any;
+        error?: any;
+      } = await this.flexPayService.createGWCardTransaction(achData, requestId);
+      return achResponse;
+    } catch (error) {
+      this.logger.error('makePaymentFlexPayACH#error', error, requestId);
+      return { ok: false, error: error };
     }
   }
 }

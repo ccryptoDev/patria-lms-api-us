@@ -27,6 +27,15 @@ export class PaymentManagementController {
     private readonly flexPayService: FlexPayService,
   ) {}
 
+  @Post('test/checkAchTransactionStatus')
+  async checkAchTransactionStatus() {
+    try {
+      await this.paymentManagementCron.checkAchTransactionStatus();
+    } catch (error) {
+      throw error;
+    }
+  }
+
   @Post('test/checkExpiredApplications')
   async runAutomaticPayments() {
     if (process.env.NODE_ENV === 'production') {
@@ -90,6 +99,32 @@ export class PaymentManagementController {
       },
       request.id,
     );
+    return response;
+  }
+
+  @Post('chargePayment')
+  async chargePaymentFlexPayCard(
+    @Body() payload: MakePaymentFlexDto,
+    @Req() request: Request,
+  ) {
+    let response = null;
+    // response = await this.flexPayService.getAchTransactionStatus();
+    if (payload.type === PaymentType.ACH) {
+      response = await this.paymentManagementService.makePaymentFlexPayACH(
+        payload,
+        request.id,
+      );
+    } else if (payload.type === PaymentType.CARD) {
+      response = await this.paymentManagementService.chargePaymentFlexPayCard(
+        payload,
+        request.id,
+      );
+
+      // response = 'To be implemented';
+    } else {
+      response = 'Not a appropiate payment method';
+    }
+
     return response;
   }
 

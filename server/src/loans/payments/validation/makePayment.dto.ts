@@ -23,6 +23,11 @@ export enum PaymentType {
   CARD = 'CARD',
 }
 
+export enum AchTransactionCode {
+  CREDIT = 22,
+  DEBIT = 27,
+}
+
 export class MakePaymentFlexDto {
   screenTrackingId: string;
 

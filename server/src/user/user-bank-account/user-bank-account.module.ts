@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { UserBankAccountService } from './user-bank-account.service';
 import { UserBankAccountController } from './user-bank-account.controller';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -40,7 +40,7 @@ import { LoggerService } from '../../logger/logger.service';
         schema: PaymentManagementSchema,
       },
     ]),
-    LoanpaymentproModule,
+    forwardRef(() => LoanpaymentproModule),
   ],
   controllers: [UserBankAccountController],
   providers: [

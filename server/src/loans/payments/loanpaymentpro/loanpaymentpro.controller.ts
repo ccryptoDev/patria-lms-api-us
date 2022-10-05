@@ -7,6 +7,7 @@ import {
   UseGuards,
   UsePipes,
   ValidationPipe,
+  Param,
 } from '@nestjs/common';
 import { Request } from 'express';
 
@@ -23,22 +24,23 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { ValidateCardDto } from './validation/validateCard.dto';
 import { ScreenTrackingService } from '../../../user/screen-tracking/screen-tracking.service';
+import { UserBankAccountService } from '../../../user/user-bank-account/user-bank-account.service';
 
 // @UseGuards(JwtAuthGuard)
 @Controller('/api')
 export class LoanpaymentproController {
   constructor(
     @InjectModel(ScreenTracking.name)
-    private readonly screenTrackingModel: Model<ScreenTrackingDocument>,
     private readonly screenTrackingService: ScreenTrackingService,
     private readonly loanPaymentProService: LoanpaymentproService,
     private readonly logger: LoggerService,
-  ) {}
+    private readonly userBankAccountService: UserBankAccountService,
+  ) { }
 
   @Post('application/addCard')
   @UsePipes(new ValidationPipe())
   async addCard(@Body() addCardDto: AddCardDto, @Req() request: Request) {
-    const sc = request?.body?.screenTrackingId;
+    const user = request?.user?.id;
     try {
       addCardDto.billingZip = addCardDto.billingZip.slice(0, 5);
       // eslint-disable-next-line prefer-const
@@ -81,6 +83,38 @@ export class LoanpaymentproController {
     }
   }
 
+  @Post('application/users/bank-accounts/:screenTrackingId')
+  // @Roles(Role.SuperAdmin, Role.UserServicing)
+  // @UseGuards(JwtAuthGuard, RolesGuard)
+  async addBankAccount(
+    @Req() request: Request,
+    @Param('screenTrackingId') screenTrackingId: string,
+    @Body() body,
+  ) {
+    const user = request.user;
+    const payload = Object.assign({ screentracking: screenTrackingId }, body);
+
+    const response: any =
+      await this.userBankAccountService.createUserBankAccount(payload);
+
+    return response;
+  }
+
+  @Post('account/remove-accounts')
+  async removeAchOrCard(
+    @Req() request: Request,
+    @Body()
+    payload: {
+      paymentType: 'ACH' | 'CARD';
+      paymentId: string;
+      screenTrackingId: string;
+    },
+  ) {
+    const response = await this.loanPaymentProService.removeAchOrCard(payload);
+
+    return response.data;
+  }
+
   @Post('validateCard')
   @UsePipes(new ValidationPipe())
   async validateCard(
@@ -116,9 +150,10 @@ export class LoanpaymentproController {
   async testingCard(@Body() payload: any, @Req() request: Request) {
     const { screenTrackingId } = payload;
     try {
-      const response: LoanPaymentProCardTokenDocument = await this.loanPaymentProService.testingPaymentService(
-        screenTrackingId,
-      );
+      const response: LoanPaymentProCardTokenDocument =
+        await this.loanPaymentProService.testingPaymentService(
+          screenTrackingId,
+        );
 
       return response;
     } catch (error) {

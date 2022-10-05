@@ -207,6 +207,7 @@ export class DashboardService {
     const userAccountsData = await this.loanPaymentProService.getUserCards(
       paymentManagementData.screenTracking.toString(),
       requestId,
+      true,
     );
 
     this.logger.log(
