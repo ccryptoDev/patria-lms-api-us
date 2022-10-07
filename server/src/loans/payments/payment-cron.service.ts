@@ -114,11 +114,12 @@ export class PaymentCronService {
             const paymentAmount = paymentScheduleItem.week
               ? paymentManagement.currentPaymentAmount
               : paymentScheduleItem.amount;
-            const payment: PaymentDocument = await this.paymentService.makePayment(
-              paymentManagement,
-              cardToken.id,
-              paymentAmount,
-            );
+            const payment: PaymentDocument =
+              await this.paymentService.makePayment(
+                paymentManagement,
+                cardToken.id,
+                paymentAmount,
+              );
             paymentScheduleItem.payment = paymentAmount;
             paymentScheduleItem.paidInterest = paymentScheduleItem.interest;
             paymentScheduleItem.paidPrincipal = paymentScheduleItem.principal;
@@ -166,7 +167,6 @@ export class PaymentCronService {
           );
 
           // add transaction status to payment schedule
-
           const transactionStatus: IPaymentScheduleStatusItem = {
             amount: paymentManagement.currentPaymentAmount,
             date: paymentManagement.paymentSchedule[scheduleItemIndex].date,

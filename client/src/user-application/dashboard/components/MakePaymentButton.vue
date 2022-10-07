@@ -277,9 +277,9 @@
             </div>
             <div v-if="previewNewScheduleComponent">
                 <h3>Confirm Payment</h3>
-                <p>preview of remaining payment schedule</p>
-                <div style="height: 60vh; overflow: auto;">
-                    <table style="overflow: auto; ">
+                <!-- <p>preview of remaining payment schedule</p> -->
+                <div style="height: 15vh; overflow: auto;">
+                    <!-- <table style="overflow: auto; ">
                         <tbody>
                             <tr>
                                 <th class="primary">Date</th>
@@ -319,7 +319,7 @@
                                 </td>
                             </tr>
                         </tbody>
-                    </table>
+                    </table> -->
                     <hr />
                     <div style="margin-top: 15px;">
                         <button @click="goToPreviewPayment" class="secondary" style="margin-right: 10px;">

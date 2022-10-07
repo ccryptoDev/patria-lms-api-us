@@ -23,9 +23,9 @@
             <td>{{ card.nameOnCard }} </td>
             <td class="row" style="margin:0px; height: 100%;">
               <input v-if="card.isDefault" :id="card._id" class="checks" type="checkbox" style=""
-                v-on:change="check($event)" checked />
+                v-on:change="check($event, 'card')" checked />
               <input v-else :id="card._id" class="checks" type="checkbox" style=""
-                v-on:change="check($event)" />
+                v-on:change="check($event, 'card')" />
             </td>
             <td>{{ card.cardNumberLastFour }}</td>
             <td v-if="isCardExpired(card.cardExpiration) && card.paymentType==='CARD'">
@@ -58,8 +58,9 @@
             <td>{{ bank.financialInstitution }}</td>
             <td class="row" style="margin:0px; height: 100%;">
               <input v-if="bank.isDefault" :id="bank._id" class="checks" type="checkbox" style=""
-                v-on:change="check($event)" checked />
-              <input v-else :id="bank._id" class="checks" type="checkbox" style="" v-on:change="check($event)" />
+                v-on:change="check($event, 'bank')" checked />
+              <input v-else :id="bank._id" class="checks" type="checkbox" style=""
+                v-on:change="check($event, 'bank')" />
             </td>
             <td>{{ bank.accountType }}</td>
             <td>{{ bank.accountNumber }}</td>
@@ -152,10 +153,11 @@ export default Vue.extend({
         }
       }
     },
-    check: function (e: any) {
+    check: function (e: any, method: 'card' | 'bank') {
       this.modal = true;
       const checkbox = document.querySelectorAll('.checks');
-      this.currentDC = this.setDefaultCard(e.target.id, checkbox, this.cards);
+      const appliedMethod = method === 'card' ? this.cards : this.userBankAccount;
+      this.currentDC = this.setDefaultCard(e.target.id, checkbox, appliedMethod);
     },
     hideModal(e: any) {
       this.modal = false;

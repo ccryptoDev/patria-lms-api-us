@@ -1154,7 +1154,7 @@ export class PaymentService {
     });
 
     const response = {
-      paymentAmount,
+      paymentAmount: paymentAmount + ledger.accruedFeesBalance,
       ledger,
       preview,
       newPaymentScheduleItem:
@@ -1948,12 +1948,6 @@ export class PaymentService {
     }
 
     newPaymentSchedule.push(newScheduleItem);
-    // this.logger.log(
-    //   'Adjusted payment management:3',
-    //   `${LedgerService.name}#adjustSchedule`,
-    //   requestId,
-    //   JSON.stringify(newPaymentSchedule),
-    // );
     const newScheduleItemIndex = newPaymentSchedule.length - 1;
     const newScheduleItemTransactionId = newScheduleItem.transactionId;
     // In non-autopay scenario, If the scheduled payment is within 30 days
@@ -2164,7 +2158,6 @@ export class PaymentService {
     requestId: string,
     lateFeeThreshold?: Date,
     lateFeeAmount?: number,
-    promo?: bool,
     ledger?: ILedger,
   ): IPaymentScheduleItem[] {
     const paymentDate = moment().startOf('day').toDate();
@@ -2224,8 +2217,8 @@ export class PaymentService {
         amount,
         date: accruedInterestDate,
         endPrincipal: 0,
-        fees: oldScheduleItem.fees || 0,
-        nsfFee: oldScheduleItem.nsfFee || 0,
+        fees: oldScheduleItem?.fees || 0,
+        nsfFee: oldScheduleItem?.nsfFee || 0,
         interest: 0,
         week,
         paidFees: 0,
@@ -2239,8 +2232,8 @@ export class PaymentService {
         startPrincipal: 0,
         status: 'opened',
         transactionId: nanoid(10),
-        nsfFeeApplied: oldScheduleItem.nsfFeeApplied,
-        lateFeeApplied: oldScheduleItem.lateFeeApplied,
+        nsfFeeApplied: oldScheduleItem?.nsfFeeApplied,
+        lateFeeApplied: oldScheduleItem?.lateFeeApplied,
       };
 
       // unpaid interest
@@ -2263,20 +2256,11 @@ export class PaymentService {
         .add(1, 'week')
         .startOf('day')
         .diff(moment(accruedInterestDate).startOf('day'), 'days');
-      let isPromoAmount = false;
 
-      if (promo == true) {
-        isPromoAmount =
-          amount >= promoPaymentAmount && promoStatus === 'available'
-            ? true
-            : false;
-      }
-      newScheduleItem.interest = isPromoAmount
-        ? 0
-        : this.toFixed(
-            ((principalPayoff * apr) / 100 / 365) * accruedInterestDays,
-            2,
-          );
+      newScheduleItem.interest = this.toFixed(
+        ((principalPayoff * apr) / 100 / 365) * accruedInterestDays,
+        2,
+      );
 
       const itemInterestPayment = this.toFixed(
         newScheduleItem.interest >= newScheduleItem.principal

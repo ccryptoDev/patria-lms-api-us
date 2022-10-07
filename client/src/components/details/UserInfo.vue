@@ -216,6 +216,11 @@
             <td>{{ userData.employerPhoneNumber }}</td>
             <td></td>
           </tr>
+          <tr v-if="paymentManagement">
+            <td>Total Balance</td>
+            <td>{{ paymentManagement.payOffAmount | currency }}</td>
+            <td></td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -232,12 +237,9 @@ import { getAdminRoles } from "@/admin-dashboard/helpers";
 
 export default Vue.extend({
   components: { Loader },
-  props: {
-    screenTrackingId: {
-      required: true,
-      type: String,
-    },
-  },
+  props: [
+    'screenTrackingId',
+  ],
   data() {
     return {
       phoneTypesList: ['Cell', 'Residence', 'Work'],
@@ -251,6 +253,7 @@ export default Vue.extend({
         username: false,
         address: false,
       },
+      paymentManagement: null as any,
       updatedData: {
         email: null,
         phoneNumber: null,
@@ -360,7 +363,11 @@ export default Vue.extend({
       const { data } = await adminDashboardRequests.getApplication(
         this.screenTrackingId
       );
+      const res = await adminDashboardRequests.getPaymentManagement(
+        this.screenTrackingId
+      );
       this.userData = data;
+      this.paymentManagement = res.data;
     } catch (error) {
       const errorMessage = await errorHandler(error, this.$router);
       if (errorMessage) {

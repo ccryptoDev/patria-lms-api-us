@@ -104,6 +104,16 @@ export class AdminDashboardService {
       screenTracking: { $exists: true },
     };
 
+    if (status === 'denied') {
+      delete matchCriteria.status;
+      Object.assign(matchCriteria, {
+        $or: [
+          { status: 'denied' },
+          { 'screenTracking.underwritingDecision.status': 'failed' },
+        ],
+      });
+    }
+
     if (search) {
       const mappedDataFields: {
         data: string;
@@ -437,7 +447,10 @@ export class AdminDashboardService {
 
       const paymentData = await this.PaymentManagementModel.updateOne(
         { screenTracking: screentrackingId, status: LOAN_STATUS.MANUAL_REVIEW },
-        { status: LOAN_STATUS.PENDING },
+        {
+          status:
+            status === 'approved' ? LOAN_STATUS.PENDING : LOAN_STATUS.DENIED,
+        },
         { upsert: true },
       );
 
@@ -471,13 +484,34 @@ export class AdminDashboardService {
       requestId,
     );
 
+    const countDeniedApplicationsAggregationPipeline = [
+      {
+        $lookup: {
+          from: 'screentracking',
+          localField: 'screenTracking',
+          foreignField: '_id',
+          as: 'screenTracking',
+        },
+      },
+      { $unwind: '$screenTracking' },
+      {
+        $match: {
+          $or: [
+            { status: 'denied' },
+            { 'screenTracking.underwritingDecision.status': 'failed' },
+          ],
+        },
+      },
+      { $count: 'count' },
+    ];
+
     const result = await Promise.all([
       this.PaymentManagementModel.find({
         status: { $in: ['approved', 'pending'] },
       }).countDocuments(),
-      this.PaymentManagementModel.find({
-        status: { $in: ['denied'] },
-      }).countDocuments(),
+      this.PaymentManagementModel.aggregate(
+        countDeniedApplicationsAggregationPipeline,
+      ).then(([{ count }]) => count),
       this.PaymentManagementModel.find({
         status: { $in: ['expired'] },
       }).countDocuments(),
@@ -492,7 +526,9 @@ export class AdminDashboardService {
         },
       }).countDocuments(),
       this.PaymentManagementModel.find({
-        status: { $in: ['in-repayment prime', 'in-repayment non-prime'] },
+        status: {
+          $in: ['in-repayment', 'in-repayment prime', 'in-repayment non-prime'],
+        },
       }).countDocuments(),
     ]);
 
@@ -848,7 +884,7 @@ export class AdminDashboardService {
     }
 
     const response: PaymentManagementDocument = paymentManagement;
-    // await this.checkPromoAvailability(paymentManagement, requestId);
+
     response.status =
       response.status === 'in-repayment prime'
         ? 'in-repayment'
@@ -1056,7 +1092,6 @@ export class AdminDashboardService {
       requestId,
       lateFeeThreshold,
       loanSettings.lateFee,
-      true,
     );
 
     await this.PaymentManagementModel.findByIdAndUpdate(paymentManagement._id, {

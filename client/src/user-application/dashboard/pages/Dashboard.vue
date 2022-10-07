@@ -27,6 +27,7 @@
                 @updateTabIndex="updateTabIndex"
                 :UserInfoData="applicationDataResponse"
                 :DashboardData="dashboardDataResponse"
+                :paymentManagementData="paymentManagementData"
               />
             </b-tab>
             <b-tab title="Loan Info" lazy>

@@ -174,7 +174,7 @@ export class PaymentManagementCronService {
               'in-repayment delinquent4',
             ],
           },
-          screenTracking: '6316557011db2742dc99deb2',
+          // screenTracking: '6316557011db2742dc99deb2',
         }).populate('screenTracking');
       if (!paymentManagements || paymentManagements.length <= 0) {
         this.logger.log(

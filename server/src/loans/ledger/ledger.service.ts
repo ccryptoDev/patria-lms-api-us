@@ -62,7 +62,7 @@ export class LedgerService {
       ledger.payoff - ledger.unpaidInterestBalance,
       2,
     );
-    ledger.dailyInterest = paymentManagement.apr / 365;
+    ledger.dailyInterest = this.toFixed(paymentManagement.apr / 365 / 100, 7);
     const num = 0;
 
     // paymentSchedule.forEach((scheduleItem) => {
@@ -135,19 +135,6 @@ export class LedgerService {
       }
     });
 
-    // if (ledger.promoStatus === 'available') {
-    //   console.log('isPastDue RAM ' + ledger.payoff);
-    //   console.log('isPastDue RAM ' + ledger.accruedFeesBalance);
-    //   console.log('isPastDue RAM ' + ledger.principalBalance);
-    //   ledger.payoff = this.toFixed(
-    //     ledger.accruedFeesBalance + ledger.principalBalance,
-    //     5,
-    //   );
-    //   console.log('isPastDue RAM ' + ledger.payoff);
-    //   console.log('isPastDue RAM ' + ledger.payoffWithNoFees);
-    //   ledger.payoffWithNoFees = ledger.principalBalance;
-    //   console.log('isPastDue RAM ' + ledger.payoffWithNoFees);
-    // } else {
     ledger.payoff = this.toFixed(
       ledger.accruedFeesBalance +
         ledger.unpaidInterestBalance +
@@ -162,14 +149,6 @@ export class LedgerService {
         ledger.principalBalance,
       5,
     );
-    //}
-
-    // this.logger.log(
-    //   'Ledger response:',
-    //   `${LedgerService.name}#getPaymentLedger`,
-    //   requestId,
-    //   ledger,
-    // );
 
     return ledger;
   }
@@ -287,28 +266,6 @@ export class LedgerService {
     index: number,
     paySchedule: IPaymentScheduleItem[],
   ): ILedger {
-    // TODO handle fees once LaserAway defines the workflow
-    // console.log('PSK Values handleOpenedPastDue \n' + index);
-
-    // this.logger.log(
-    //   'PSK Valuesssss \n:',
-    //   `${ledger.cycleStartDate}\n
-    //   ${ledger.cycleEndDate} \n
-    //   ${ledger.ledgerDate} \n
-    //   ${scheduleItem.date} \n
-    //   ${ledger.daysInCycle} \n
-    //   ${ledger.cycleAccruedInterest} \n
-    //   ${ledger.principalBalance} \n
-    //   ${ledger.accruedInterestBalance} \n
-    //   ${ledger.daysPastDue} \n
-    //   ${ledger.pastDueInterestBalance} \n
-    //   ${ledger.unpaidInterestBalance}  \n
-    //   #getPaymentLedgerr`,
-    //   'req',
-    //   paySchedule[index],
-    // );
-    // accrued interest
-
     if (
       moment(scheduleItem.date).isBefore(
         moment(this.paymentManagement1.nextPaymentSchedule),
@@ -316,7 +273,6 @@ export class LedgerService {
       )
     ) {
     }
-    //ledger.principalBalance = ledger.principalBalance - scheduleItem.principal;
     ledger.cycleStartDate = moment(scheduleItem.date)
       .subtract('1', 'week')
       .startOf('day')
@@ -347,7 +303,6 @@ export class LedgerService {
       5,
     );
 
-    //if (this.pendingPayments == 0) {
     // past due interest
     const daysPastDue = moment(ledger.ledgerDate)
       .startOf('day')
@@ -355,7 +310,7 @@ export class LedgerService {
     ledger.daysPastDue = daysPastDue;
 
     const pastDueInterest =
-      (ledger.dailyInterest * daysPastDue * ledger.principalBalance) / 100;
+      ledger.dailyInterest * daysPastDue * ledger.principalBalance;
     ledger.pastDueInterestBalance = this.toFixed(
       ledger.pastDueInterestBalance + pastDueInterest,
       5,
@@ -363,6 +318,16 @@ export class LedgerService {
 
     ledger.unpaidInterestBalance = this.toFixed(
       ledger.unpaidInterestBalance + pastDueInterest,
+      5,
+    );
+
+    ledger.accruedFeesBalance = this.toFixed(
+      ledger.accruedFeesBalance + scheduleItem.fees,
+      5,
+    );
+
+    ledger.accruedFeesBalance = this.toFixed(
+      ledger.accruedFeesBalance + scheduleItem.nsfFee,
       5,
     );
 
@@ -377,21 +342,7 @@ export class LedgerService {
     // if (!ledger.unpaidInterestBalance || ledger.unpaidInterestBalance == 0) {
     //   ledger.principalBalance = scheduleItem.endPrincipal;
     // }
-    // this.logger.log(
-    //   'PSK Valuesssss NEXT\n:',
-    //   `${ledger.cycleStartDate}\n
-    //    ${ledger.cycleEndDate} \n
-    //    ${ledger.daysInCycle} \n
-    //    ${ledger.cycleAccruedInterest} \n
-    //    ${ledger.principalBalance} \n
-    //    ${ledger.accruedInterestBalance} \n
-    //    ${ledger.daysPastDue} \n
-    //    ${ledger.pastDueInterestBalance} \n
-    //    ${ledger.unpaidInterestBalance}  \n
-    //   #getPaymentLedgerr`,
-    //   'req',
-    //   '',
-    // );
+
     return ledger;
   }
 

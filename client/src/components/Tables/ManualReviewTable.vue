@@ -81,7 +81,7 @@ export default Vue.extend({
         }
       }
       this.rows = rows1;
-      this.totalRows = rows1.length;
+      this.totalRows = totalRows;
     },
 
     // async fetchManualReviewList() {
