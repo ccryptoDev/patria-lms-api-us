@@ -400,6 +400,19 @@ export class FlexPayService {
       payload.status = getStatus(transaction.itemStatus);
       payload.itemStatusDescription = transaction.itemStatusDescription;
     } else {
+      const status1 = transaction?.status?.toLowerCase();
+      const status2 = transaction?.response?.toLowerCase();
+
+      if (status1 === 'failed') payload['status'] = TransactionStatus.FAILED;
+      if (
+        status1 === 'pending' ||
+        status2 === 'pending' ||
+        status1 === TransactionStatus.IN_SETTLEMENT
+      )
+        payload['status'] = TransactionStatus.PENDING;
+      if (status1 === 'approved' || status2 === 'approved')
+        payload['status'] = TransactionStatus.APPROVED;
+
       payload['status'] =
         transaction.status === 'Failed'
           ? TransactionStatus.FAILED
@@ -412,6 +425,7 @@ export class FlexPayService {
 
   async getAchTransactionStatus(
     requestId: string,
+    dateRange = 15,
   ): Promise<FlexTransactionReportDocument[]> {
     try {
       const processedPayments = await this.flexPayTransaction.find(
@@ -421,25 +435,27 @@ export class FlexPayService {
           },
           'transaction.achTransactionCode': AchTransactionCode.DEBIT,
           createdAt: {
-            $gte: new Date(moment().subtract(15, 'days').toISOString()),
+            $gte: new Date(moment().subtract(dateRange, 'days').toISOString()),
           },
         },
         { paymentRef: 1 },
       );
 
-      const achData = await this.flexPayTransaction.aggregate([
+      const achData = (await this.flexPayTransaction.aggregate([
         {
           $match: {
             paymentType: PaymentType.ACH,
-            _id: {
-              $nin: processedPayments,
+            paymentRef: {
+              $nin: processedPayments.map((x) => x.paymentRef),
             },
             status: {
               $in: [TransactionStatus.PENDING, TransactionStatus.SETTLED],
             },
             'transaction.achTransactionCode': AchTransactionCode.DEBIT,
             createdAt: {
-              $gte: new Date(moment().subtract(15, 'days').toISOString()),
+              $gte: new Date(
+                moment().subtract(dateRange, 'days').toISOString(),
+              ),
             },
           },
         },
@@ -448,28 +464,10 @@ export class FlexPayService {
             createdAt: -1,
           },
         },
-      ]);
+      ])) as FlexTransactionReportDocument[];
 
-      // only most recent for each
-      const filteredData = achData;
-      // const filteredData = achData.filter(
-      //   ({ transaction }, _, self) =>
-      //     !self.some(
-      //       (t) =>
-      //         t.transaction.yourReferenceNumber ===
-      //         transaction.yourReferenceNumber,
-      //     ),
-      // );
-
-      this.logger.log(
-        'Payments for processing',
-        `${FlexPayService.name}#getAchTransactionStatus::filteredData`,
-        requestId,
-        filteredData,
-      );
-
-      if (filteredData.length === 0) {
-        throw new HttpException('ACH transaction not found', 404);
+      if (achData.length === 0) {
+        return achData;
       }
 
       const accessTokenResult = await this.getAccessToken();
@@ -488,11 +486,9 @@ export class FlexPayService {
 
       const AchStatusUrl = this.configService.get<any>('FLEX_GET_ACH_STATUS');
 
-      const updatedTransactions = [];
+      const updatedTransactions = [] as FlexTransactionReportDocument[];
 
-      for (let i = 0; i < filteredData.length; i++) {
-        const achTransaction = achData[i];
-
+      for (const achTransaction of achData) {
         const options: AxiosRequestConfig = {
           method: 'GET',
           url: `${AchStatusUrl}?AchItemId=${achTransaction.transaction?.achItemId}`,
@@ -528,28 +524,38 @@ export class FlexPayService {
           throw new HttpException('Transaction Not Found', 404);
         }
 
-        const commitDataContext: FlexTransactionCommit = {
-          userData: {
-            userId: achTransaction.user,
-            screenTrackingId: achTransaction.screenTracking,
-            paymentType: 'ACH',
-            paymentRef: achTransaction.paymentRef,
-          },
-          transaction: transactions[0],
-        };
+        if (
+          transactions[0].itemStatus !== achTransaction.transaction.itemStatus
+        ) {
+          const commitDataContext: FlexTransactionCommit = {
+            userData: {
+              userId: achTransaction.user,
+              screenTrackingId: achTransaction.screenTracking,
+              paymentType: 'ACH',
+              paymentRef: achTransaction.paymentRef,
+            },
+            transaction: transactions[0],
+          };
 
-        const commitResponse = await this.commitTransactionData(
-          commitDataContext,
-        );
+          const commitResponse = await this.commitTransactionData(
+            commitDataContext,
+          );
 
-        this.logger.log(
-          'Stored ACH Transaction',
-          `${FlexPayService.name}#getAchTransactionStatus::commitResponse`,
-          requestId,
-          commitResponse,
-        );
+          this.logger.log(
+            'Stored ACH Transaction',
+            `${FlexPayService.name}#getAchTransactionStatus::commitResponse`,
+            requestId,
+            commitResponse,
+          );
 
-        updatedTransactions.push(commitResponse);
+          updatedTransactions.push(commitResponse);
+        } else {
+          const updatedTransaction = await this.updateTransactionContext(
+            { _id: achTransaction._id },
+            { lastCheck: new Date() },
+          );
+          updatedTransactions.push(updatedTransaction);
+        }
       }
 
       return updatedTransactions;
@@ -773,21 +779,18 @@ export class FlexPayService {
 
       const { status, data } = await axios(options);
 
-      // this.logger.log(
-      //   'Flex Pay Response',
-      //   `${FlexPayService.name}#createGWCardTransaction::response`,
-      //   requestId,
-      //   { status, data },
-      // );
+      this.logger.log(
+        'Flex Pay Response',
+        `${FlexPayService.name}#createGWCardTransaction::response`,
+        requestId,
+        { status, data },
+      );
       console.log('data========', data);
       if (status !== 200) {
         throw new HttpException('Partial Service Outage', 500);
       }
 
       if (data.status != 'success') {
-        throw new HttpException('FlexPay payment rejected', 400);
-      }
-      if (data?.data?.status === FLEX_CHARGE_STATUS.FAILED) {
         throw new HttpException('FlexPay payment rejected', 400);
       }
       if (data?.data?.status === FLEX_CHARGE_STATUS.FAILED) {
@@ -826,10 +829,55 @@ export class FlexPayService {
     }
   }
 
-  async updateTransactionContext(
-    query: Partial<FlexTransactionReportDocument>,
-    payload: Partial<FlexTransactionReportDocument>,
-  ) {
-    return await this.flexPayTransaction.findOneAndUpdate(query, payload);
+  async getChargedCardTransaction(): Promise<FlexReturnPayload> {
+    const response: FlexReturnPayload = { ok: false, data: null, error: null };
+    try {
+      const query = {
+        $or: [
+          { status: TransactionStatus.PENDING },
+          { 'transaction.status': { $ne: 'settled' } },
+        ],
+      };
+      const chargedCards = await this.flexPayTransaction.find(query);
+      response.data = chargedCards;
+      response.ok = true;
+    } catch (error) {
+      response.error = error;
+    } finally {
+      return response;
+    }
+  }
+
+  async getChargedCardStatus(transactions): Promise<FlexReturnPayload> {
+    const response: FlexReturnPayload = { ok: false, data: null, error: null };
+    try {
+      const flexTokenUrl = this.configService.get<any>('FLEX_GW_URL');
+      const { id } = transactions;
+      const options: AxiosRequestConfig = {
+        method: 'GET',
+        url: `${flexTokenUrl}/api/transaction/${id}`,
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          Authorization: `api_2EzHuFXRIq8bQMS7VHL223daxr7`,
+        },
+      };
+      const { status, data } = await axios(options);
+      if (status !== 200) {
+        throw new HttpException('Transaction Not Found', 404);
+      }
+      response.data = data;
+      response.ok = true;
+    } catch (error) {
+      response.error = error;
+    } finally {
+      return response;
+    }
+  }
+
+  async updateTransactionContext(query: any, payload: any) {
+    return await this.flexPayTransaction.findOneAndUpdate(query, payload, {
+      new: true,
+    });
   }
 }

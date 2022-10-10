@@ -92,6 +92,7 @@ export interface FlexTransactionCommit {
     returnFileName: string;
     settlementReportFileName: string;
     returnReportFileName: string;
+    response?: string;
   };
   userData: {
     userId: string | UserDocument;

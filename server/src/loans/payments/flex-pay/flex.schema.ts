@@ -13,6 +13,7 @@ export enum TransactionStatus {
   SETTLED = 'Settled',
   APPROVED = 'Approved',
   FAILED = 'Failed',
+  IN_SETTLEMENT = 'pending_settlement',
 }
 
 @Schema({
@@ -54,6 +55,9 @@ export class FlexTransactionReport {
 
   @Prop({ required: false })
   paymentRef: string;
+
+  @Prop({ default: new Date() })
+  lastCheck: Date;
 }
 
 export const FlexTransactionReportSchema = SchemaFactory.createForClass(
