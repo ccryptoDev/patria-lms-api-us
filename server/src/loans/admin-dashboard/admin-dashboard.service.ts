@@ -450,8 +450,7 @@ export class AdminDashboardService {
         {
           status:
             status === 'approved' ? LOAN_STATUS.PENDING : LOAN_STATUS.DENIED,
-        },
-        { upsert: true },
+        }
       );
 
       if (paymentData?.nModified === 0) {
@@ -889,15 +888,22 @@ export class AdminDashboardService {
       response.status === 'in-repayment prime'
         ? 'in-repayment'
         : response.status;
-    const ledger = this.ledgerService.getPaymentLedger(
+
+    const ledger = await this.ledgerService.getPaymentLedger(
       response,
       moment().startOf('day').toDate(),
       requestId,
     );
+
     response.payOffAmount = ledger.payoff;
     response.screenTracking = screenTracking;
+    response.paymentSchedule = response.paymentSchedule.filter(
+      (scheduleItem) => {
+        return moment().isAfter(scheduleItem.date);
+      },
+    );
 
-    return response;
+    return { response, ledger };
   }
 
   async checkPromoAvailability(

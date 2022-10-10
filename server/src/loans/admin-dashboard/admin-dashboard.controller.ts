@@ -75,7 +75,7 @@ export class AdminDashboardController {
     private readonly configService: ConfigService,
     private readonly mailService: MandrillService,
     private readonly nunjucksService: NunjucksCompilerService,
-  ) { }
+  ) {}
 
   @Get('loans')
   @Roles(Role.SuperAdmin, Role.UserServicing)
@@ -546,10 +546,11 @@ export class AdminDashboardController {
     @Req() request: Request & { user: AdminJwtPayload },
   ) {
     try {
-      const response = await this.adminDashboardService.getPaymentSchedule(
-        screenTrackingId,
-        request.id,
-      );
+      const { response, ledger } =
+        await this.adminDashboardService.getPaymentSchedule(
+          screenTrackingId,
+          request.id,
+        );
 
       const { id, userName, email, role, practiceManagement } = request.user;
       await this.logActivityService.createLogActivity(
@@ -574,7 +575,7 @@ export class AdminDashboardController {
         `${AdminDashboardController.name}#getPaymentSchedule`,
         request.id,
       );
-      return response;
+      return { response, ledger };
     } catch (error) {
       this.logger.error(
         'Error:',
