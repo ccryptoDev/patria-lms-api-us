@@ -367,7 +367,7 @@ export default Vue.extend({
         this.screenTrackingId
       );
       this.userData = data;
-      this.paymentManagement = res.data;
+      this.paymentManagement = res.data.response;
     } catch (error) {
       const errorMessage = await errorHandler(error, this.$router);
       if (errorMessage) {

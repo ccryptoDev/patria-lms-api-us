@@ -341,7 +341,7 @@ export default Vue.extend({
         const { data } = await adminDashboardRequests.getPaymentManagement(
           this.screenTrackingId
         );
-        this.paymentManagement = data;
+        this.paymentManagement = data.response;
       } catch (error) {
         const errorMessage = await errorHandler(error, this.$router);
         if (errorMessage) {
@@ -465,25 +465,26 @@ export default Vue.extend({
       const { data } = await adminDashboardRequests.getPaymentManagement(
         this.screenTrackingId
       );
+      const pm = data.response;
       if (
-        data?.status === "in-repayment" ||
-        data?.status === "in-repayment prime" ||
-        data?.status === "in-repayment non-prime" ||
-        data?.status === "in-repayment delinquent1" ||
-        data?.status === "in-repayment delinquent2" ||
-        data?.status === "in-repayment delinquent3" ||
-        data?.status === "in-repayment delinquent4"
+        pm?.status === "in-repayment" ||
+        pm?.status === "in-repayment prime" ||
+        pm?.status === "in-repayment non-prime" ||
+        pm?.status === "in-repayment delinquent1" ||
+        pm?.status === "in-repayment delinquent2" ||
+        pm?.status === "in-repayment delinquent3" ||
+        pm?.status === "in-repayment delinquent4"
       ) {
         this.isInRepayment = true;
-      } else if (data?.status === "paid") {
+      } else if (pm?.status === "paid") {
         this.isInRepayment = false;
         this.isPaid = true;
-      } else if (data?.status === "closed") {
+      } else if (pm?.status === "closed") {
         this.isInRepayment = false;
         this.isPaid = false;
         this.isClosed = true;
       }
-      this.paymentManagement = data;
+      this.paymentManagement = pm;
     } catch (error) {
 
       const errorMessage = await errorHandler(error, this.$router);

@@ -413,7 +413,7 @@ export default Vue.extend({
         const { data } = await adminDashboardRequests.getPaymentManagement(
           this.screenTrackingId
         );
-        this.paymentManagement = data;
+        this.paymentManagement = data.response;
         const today = moment().startOf("day").toDate();
         if (
           moment(this.paymentManagement.nextPaymentSchedule).isBefore(

@@ -34,11 +34,17 @@
             <td>{{ paymentManagement.apr }}%</td>
           </tr>
           <tr v-if="isInRepayment || isPaid">
-            <th>Financing Term</th>
+            <th>Original Financing Term</th>
             <td>
-              {{ paymentManagement.loanTermCount }}
+              {{ paymentManagement.initialPaymentSchedule.length }} weeks
             </td>
           </tr>
+          <!-- <tr v-if="isInRepayment || isPaid">
+            <th>Remaining Financing Term</th>
+            <td>
+              {{ paymentManagement.initialPaymentSchedule.length }} weeks
+            </td>
+          </tr> -->
           <!-- <tr v-if="(paymentManagement.promoTermCount && isInRepayment) || isPaid">
             <th>Promo Term</th>
             <td>
@@ -58,11 +64,30 @@
             </td>
           </tr> -->
           <tr v-if="isInRepayment || isPaid">
+            <th>Delinquent Amount</th>
+            <td>
+              <ul>
+                Unpaid Interest Balance: {{ ledger.unpaidInterestBalance | currency }}
+              </ul>
+              <ul>
+                Cycled Arrcued Interest: {{ ledger.cycleAccruedInterest | currency }}
+              </ul>
+              <ul>
+                Unpaid Fees Balance: {{ ledger.accruedFeesBalance | currency }}
+              </ul>
+
+              <ul>
+                <b>Total: </b> {{ ledger.delinquentAmount | currency }}
+              </ul>
+            </td>
+          </tr>
+          <tr v-if="isInRepayment || isPaid">
             <th>Maturity Date</th>
             <td>
               {{ paymentManagement.maturityDate | date }}
             </td>
           </tr>
+
           <tr v-if="isInRepayment || isPaid">
             <th>Next Payment Schedule Date</th>
             <td style="
@@ -224,13 +249,13 @@
         <thead>
           <tr>
             <th style="width: 10px">#</th>
-            <th>Unpaid Principal Balance</th>
-            <th>Principal</th>
-            <th>Interest</th>
+            <th>Schedule Date</th>
+            <th>Amount</th>
+            <!-- <th>Unpaid Principal Balance</th>
+            // <th>Principal</th>
+            // <th>Interest</th> -->
             <th>Late Fee</th>
             <th>NSF Fee</th>
-            <th>Amount</th>
-            <th>Schedule Date</th>
             <th
               v-if="
                 this.userData.role === 'Manager - LA' ||
@@ -254,13 +279,16 @@
         <tbody>
           <tr v-for="(paymentScheduleItem, index) in paymentScheduleLeft" :key="index">
             <td>{{ index + 1 }}</td>
-            <td>
+            <td>{{ paymentScheduleItem.date | date }}</td>
+            <td>{{ paymentScheduleItem.amount | currency }}</td>
+
+            <!-- <td>
               {{ paymentScheduleItem.startPrincipal | currency }}
             </td>
             <td>
               {{ paymentScheduleItem.principal | currency }}
             </td>
-            <td>{{ paymentScheduleItem.interest | currency }}</td>
+            <td>{{ paymentScheduleItem.interest | currency }}</td> -->
             <td>{{ paymentScheduleItem.fees | currency }}</td>
             <td>
               {{
@@ -269,9 +297,6 @@
                   : paymentScheduleItem.nsfFee | currency
               }}
             </td>
-            <td>{{ paymentScheduleItem.amount | currency }}</td>
-            <td>{{ paymentScheduleItem.date | date }}</td>
-           
             <td
               v-if="
                 userData.role === 'Manager - LA' ||
@@ -341,32 +366,34 @@
         <thead>
           <tr>
             <th style="width: 10px">#</th>
-            <th>Start balance</th>
+            <th>Date</th>
+            <th>Amount</th>
+            <!-- <th>Start balance</th> -->
             <th>PMT Reference</th>
             <th>Status</th>
             <th>Payment Type</th>
-            <th>Amount</th>
             <th>Applied to Fees</th>
-            <th>Applied to Interest</th>
+            <!-- <th>Applied to Interest</th>
             <th>Applied to Principal</th>
-            <th>End Principal Balance</th>
-            <th>Date</th>
+            <th>End Principal Balance</th> -->
+
           </tr>
         </thead>
         <tbody>
           <tr v-for="(payment, index) in payments" :key="payment.paymentId">
             <td>{{ index + 1 }}</td>
-            <td>{{ payment.startPrincipal | currency }}</td>
-            <td>{{ payment.paymentReference }}</td>
+            <td>{{ payment.date | date }}</td>
+            <td>{{ payment.amount | currency }}</td>
+            <!-- <td>{{ payment.startPrincipal | currency }}</td> -->
+            <td>{{ payment.paymentReference || '--'}} </td>
             <td v-if="payment.status == 'failed'">
               {{ payment.status }} - {{ payment.transactionMessage }}
             </td>
             <td v-if="payment.isRefund == true">Refunded</td>
             <td v-else-if="payment.status == 'paid'">{{ payment.status }}</td>
             <td>{{ payment.paymentType }}</td>
-            <td>{{ payment.amount | currency }}</td>
             <td>{{ payment.paidFees | currency }}</td>
-            <td>
+            <!-- <td>
               {{
               (payment.paidInterest + payment.paidPastDueInterest) | currency
               }}
@@ -375,8 +402,7 @@
             <td v-if="payment.isAmended == true">
               {{ (payment.startPrincipal - payment.paidPrincipal) | currency }}
             </td>
-            <td v-else>{{ (payment.startPrincipal - payment.paidPrincipal) | currency }}</td>
-            <td>{{ payment.date | date }}</td>
+            <td v-else>{{ (payment.startPrincipal - payment.paidPrincipal) | currency }}</td> -->
           </tr>
         </tbody>
       </table>
@@ -462,6 +488,7 @@ export default Vue.extend({
       isPaid: false,
       isClosed: false,
       paymentManagement: [] as any,
+      ledger: [] as any,
       userData: getUserData(),
       applicationData: [] as any,
       email: null as null | string,
@@ -754,22 +781,25 @@ export default Vue.extend({
         const { data } = await adminDashboardRequests.getPaymentManagement(
           this.screenTrackingId
         );
+        const pm = data.response;
+        const ledger = data.ledger;
         if (
-          data?.status === "in-repayment prime" ||
-          data?.status === "in-repayment" ||
-          data?.status === "in-repayment non-prime" ||
-          data?.status === "in-repayment delinquent1" ||
-          data?.status === "in-repayment delinquent2" ||
-          data?.status === "in-repayment delinquent3" ||
-          data?.status === "in-repayment delinquent4"
+          pm?.status === "in-repayment prime" ||
+          pm?.status === "in-repayment" ||
+          pm?.status === "in-repayment non-prime" ||
+          pm?.status === "in-repayment delinquent1" ||
+          pm?.status === "in-repayment delinquent2" ||
+          pm?.status === "in-repayment delinquent3" ||
+          pm?.status === "in-repayment delinquent4"
         ) {
           this.isInRepayment = true;
-        } else if (data?.status === "paid") {
+        } else if (pm?.status === "paid") {
           this.isInRepayment = false;
           this.isPaid = true;
         }
 
-        this.paymentManagement = data;
+        this.paymentManagement = pm;
+        this.ledger = ledger;
       } catch (error) {
         if (error.response.status === 404) {
           return;
@@ -1091,25 +1121,28 @@ export default Vue.extend({
       const { data } = await adminDashboardRequests.getPaymentManagement(
         this.screenTrackingId
       );
+      const pm = data.response;
+      const ledger = data.ledger;
       if (
-        data?.status === "in-repayment prime" ||
-        data?.status === "in-repayment" ||
-        data?.status === "in-repayment non-prime" ||
-        data?.status === "in-repayment delinquent1" ||
-        data?.status === "in-repayment delinquent2" ||
-        data?.status === "in-repayment delinquent3" ||
-        data?.status === "in-repayment delinquent4"
+        pm?.status === "in-repayment prime" ||
+        pm?.status === "in-repayment" ||
+        pm?.status === "in-repayment non-prime" ||
+        pm?.status === "in-repayment delinquent1" ||
+        pm?.status === "in-repayment delinquent2" ||
+        pm?.status === "in-repayment delinquent3" ||
+        pm?.status === "in-repayment delinquent4"
       ) {
         this.isInRepayment = true;
-      } else if (data?.status === "paid") {
+      } else if (pm?.status === "paid") {
         this.isInRepayment = false;
         this.isPaid = true;
-      } else if (data?.status === "closed") {
+      } else if (pm?.status === "closed") {
         this.isInRepayment = false;
         this.isPaid = false;
         this.isClosed = true;
       }
-      this.paymentManagement = data;
+      this.paymentManagement = pm;
+      this.ledger = ledger;
       this.checkCollections();
     } catch (error) {
       if (error.response.status === 404) {
