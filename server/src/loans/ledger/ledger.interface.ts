@@ -24,4 +24,5 @@ export interface ILedger {
   principalBalance: number;
   promoStatus: 'available' | 'unavailable';
   unpaidInterestBalance: number;
+  delinquentAmount: number;
 }

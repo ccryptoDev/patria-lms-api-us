@@ -168,14 +168,13 @@ export class PaymentService {
       );
     }
 
-    const updatepaymentManagementModel =
-      await this.paymentManagementModel.updateOne(
-        { screenTracking: findscreenTracking._id },
-        {
-          status: 'closed',
-          canRunAutomaticPayment: false,
-        },
-      );
+    const updatepaymentManagementModel = await this.paymentManagementModel.updateOne(
+      { screenTracking: findscreenTracking._id },
+      {
+        status: 'closed',
+        canRunAutomaticPayment: false,
+      },
+    );
 
     if (updatepaymentManagementModel.nModified < 1) {
       const errorMessage = `Invalid token`;
@@ -199,13 +198,12 @@ export class PaymentService {
     });
 
     paidTransaction.forEach(async (transaction) => {
-      const refundStatus =
-        await this.loanPaymentProService.v21PaymentsRefundCard(
-          transaction.transactionId,
-          transaction.paymentRequest.invoiceId,
-          String(transaction.paymentRequest.amount),
-          request.id,
-        );
+      const refundStatus = await this.loanPaymentProService.v21PaymentsRefundCard(
+        transaction.transactionId,
+        transaction.paymentRequest.invoiceId,
+        String(transaction.paymentRequest.amount),
+        request.id,
+      );
       if (refundStatus.ResponseCode == '29') {
         const refundUpdate = await this.paymentManagementModel.updateOne(
           {
@@ -328,12 +326,11 @@ export class PaymentService {
       //     collectionsAccountStatus: collectionAccountStatus,
       //   },
       // );
-      const paymentScheduleItems: IPaymentScheduleItem[] =
-        paymentManagement.paymentSchedule.filter(
-          (scheduleItem) =>
-            moment(scheduleItem.date).startOf('day').isBefore(today) &&
-            scheduleItem.status === 'opened',
-        );
+      const paymentScheduleItems: IPaymentScheduleItem[] = paymentManagement.paymentSchedule.filter(
+        (scheduleItem) =>
+          moment(scheduleItem.date).startOf('day').isBefore(today) &&
+          scheduleItem.status === 'opened',
+      );
 
       // If there is no late payments in the schedule
       if (!paymentScheduleItems || paymentScheduleItems.length <= 0) {
@@ -356,11 +353,10 @@ export class PaymentService {
           `${PaymentService.name}#movetocollections`,
           `${JSON.stringify(furthestLatePayment)}`,
         );
-        let collectionStatus: PaymentManagementDocument['collectionAssignStatus'] =
-          await this.determineCollectionTier(
-            moment(today).diff(furthestLatePayment.date, 'day'),
-            loanPeriod,
-          );
+        let collectionStatus: PaymentManagementDocument['collectionAssignStatus'] = await this.determineCollectionTier(
+          moment(today).diff(furthestLatePayment.date, 'day'),
+          loanPeriod,
+        );
         this.logger.log(
           '\n\nPayment management move to collections paymentScheduleItems',
           `${PaymentService.name}#movetocollections`,
@@ -373,10 +369,9 @@ export class PaymentService {
         if (collectionStatus != '') {
           collectionAccountStatus = 'WAITING_TO_COLLECT';
         }
-        let updateStatus: PaymentManagementDocument['status'] =
-          await this.determineDelinquentTier(
-            moment(today).diff(furthestLatePayment.date, 'day'),
-          );
+        let updateStatus: PaymentManagementDocument['status'] = await this.determineDelinquentTier(
+          moment(today).diff(furthestLatePayment.date, 'day'),
+        );
         if (status.includes('Collections')) {
           updateStatus =
             findscreenTracking.offerData.downPayment == 0
@@ -794,10 +789,11 @@ export class PaymentService {
     amount: number,
     requestId?: string,
   ) {
-    const paymentNextValue: CountersDocument =
-      await this.countersService.getNextSequenceValue('payment', requestId);
-    const practiceManagement =
-      paymentManagement.practiceManagement as PracticeManagementDocument;
+    const paymentNextValue: CountersDocument = await this.countersService.getNextSequenceValue(
+      'payment',
+      requestId,
+    );
+    const practiceManagement = paymentManagement.practiceManagement as PracticeManagementDocument;
     const user = paymentManagement.user as UserDocument;
     const findUser = await this.userModel.findOne({
       _id: user._id,
@@ -852,11 +848,10 @@ export class PaymentService {
           paymentVia,
           paymentData,
         };
-        const cardResponse =
-          await this.paymentManagementService.chargePaymentFlexPayCard(
-            payload,
-            requestId,
-          );
+        const cardResponse = await this.paymentManagementService.chargePaymentFlexPayCard(
+          payload,
+          requestId,
+        );
         if (!cardResponse.ok) {
           throw new HttpException(cardResponse.error, 500);
         }
@@ -904,10 +899,11 @@ export class PaymentService {
       requestId,
       { user, screenTracking, amount, paymentMethodToken },
     );
-    const paymentManagement: PaymentManagementDocument =
-      await this.paymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument = await this.paymentManagementModel.findOne(
+      {
         user,
-      });
+      },
+    );
     if (!paymentManagement) {
       this.logger.error(
         'Payment management not found.',
@@ -1170,10 +1166,11 @@ export class PaymentService {
   ) {
     const { screenTracking } = makePaymentDto;
     let { amount, paymentDate } = makePaymentDto;
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.paymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.paymentManagementModel.findOne(
+      {
         screenTracking,
-      });
+      },
+    );
     if (!paymentManagement) {
       throw new NotFoundException(
         this.appService.errorHandler(
@@ -1247,10 +1244,11 @@ export class PaymentService {
       paymentDate = today;
     }
 
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.paymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.paymentManagementModel.findOne(
+      {
         screenTracking,
-      });
+      },
+    );
     if (!paymentManagement) {
       throw new NotFoundException(
         this.appService.errorHandler(
@@ -1340,10 +1338,11 @@ export class PaymentService {
       `${PaymentService.name}#promisetoPay`,
     );
 
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.paymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.paymentManagementModel.findOne(
+      {
         _id: paymentId,
-      });
+      },
+    );
     if (!paymentManagement) {
       throw new NotFoundException(
         this.appService.errorHandler(
@@ -1409,10 +1408,11 @@ export class PaymentService {
     requestId: string,
   ) {
     try {
-      const paymentManagement: PaymentManagementDocument | null =
-        await this.paymentManagementModel.findOne({
+      const paymentManagement: PaymentManagementDocument | null = await this.paymentManagementModel.findOne(
+        {
           _id: paymentManagementId,
-        });
+        },
+      );
       if (!paymentManagement) {
         throw new NotFoundException(
           this.appService.errorHandler(
@@ -1465,10 +1465,11 @@ export class PaymentService {
     requestId: string,
   ) {
     try {
-      const paymentManagement: PaymentManagementDocument | null =
-        await this.paymentManagementModel.findOne({
+      const paymentManagement: PaymentManagementDocument | null = await this.paymentManagementModel.findOne(
+        {
           _id: paymentManagementId,
-        });
+        },
+      );
       if (!paymentManagement) {
         throw new NotFoundException(
           this.appService.errorHandler(
@@ -1495,8 +1496,9 @@ export class PaymentService {
       }
 
       promiseArray[promiseIndex].contactScheduleReminderAmount = amount;
-      promiseArray[promiseIndex].contactScheduleReminderDate =
-        moment(newPromiseDate).toDate();
+      promiseArray[promiseIndex].contactScheduleReminderDate = moment(
+        newPromiseDate,
+      ).toDate();
       const paymentUpdate = await this.paymentManagementModel.updateOne(
         { _id: paymentManagementId },
         { promiseToPay: promiseArray },
@@ -1523,10 +1525,11 @@ export class PaymentService {
       paymentDate = today;
     }
 
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.paymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.paymentManagementModel.findOne(
+      {
         screenTracking,
-      });
+      },
+    );
     if (!paymentManagement) {
       throw new NotFoundException(
         this.appService.errorHandler(
@@ -1618,10 +1621,9 @@ export class PaymentService {
           };
 
           // find next payment date
-          const nextPaymentScheduleItem: IPaymentScheduleItem =
-            paymentManagement.paymentSchedule.find(
-              (scheduleItem) => scheduleItem.status === 'opened',
-            );
+          const nextPaymentScheduleItem: IPaymentScheduleItem = paymentManagement.paymentSchedule.find(
+            (scheduleItem) => scheduleItem.status === 'opened',
+          );
           if (nextPaymentScheduleItem) {
             updatedPaymentManagement.nextPaymentSchedule =
               nextPaymentScheduleItem.date;
@@ -1726,10 +1728,11 @@ export class PaymentService {
       paymentDate = today;
     }
 
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.paymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.paymentManagementModel.findOne(
+      {
         screenTracking,
-      });
+      },
+    );
     if (!paymentManagement) {
       throw new NotFoundException(
         this.appService.errorHandler(
@@ -2407,6 +2410,8 @@ export class PaymentService {
     screenTrackingId: string,
     paymentRef: string,
     requestId = '',
+    returnReason = 'being unable to complete payment',
+    sendEmail = true,
   ) {
     const paymentManagementData = await this.paymentManagementModel
       .findOne({
@@ -2453,11 +2458,13 @@ export class PaymentService {
         },
       );
 
-      await this.paymentFailure(
-        paymentManagementData.user as UserDocument,
-        currentPayment.amount,
-        'ACH payment being returned',
-      );
+      if (sendEmail) {
+        await this.paymentFailure(
+          paymentManagementData.user as UserDocument,
+          currentPayment.amount,
+          returnReason,
+        );
+      }
     }
   }
 }

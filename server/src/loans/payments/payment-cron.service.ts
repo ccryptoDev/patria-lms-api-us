@@ -18,6 +18,14 @@ import { IPaymentScheduleItem } from './payment-management/payment-schedule-item
 import { IPaymentScheduleStatusItem } from './payment-management/payment-schedule-transactionstatus.interface';
 import { PaymentDocument } from './payment.schema';
 import { PaymentService } from './payment.service';
+import {
+  LogActivityService,
+  logActivityModuleNames,
+} from '../../user/log-activity/log-activity.service';
+import {
+  ScreenTracking,
+  ScreenTrackingDocument,
+} from '../../user/screen-tracking/screen-tracking.schema';
 
 @Injectable()
 export class PaymentCronService {
@@ -26,8 +34,11 @@ export class PaymentCronService {
     private readonly loanPaymentProCardTokenModel: Model<LoanPaymentProCardTokenDocument>,
     @InjectModel(PaymentManagement.name)
     private readonly paymentManagementModel: Model<PaymentManagementDocument>,
+    @InjectModel(ScreenTracking.name)
+    private readonly screenTrackingModel: Model<ScreenTrackingDocument>,
     private readonly paymentService: PaymentService,
     private readonly logger: LoggerService,
+    private readonly logActivityService: LogActivityService,
   ) {}
   //EVERY_MINUTE
   @Cron(CronExpression.EVERY_DAY_AT_8PM) // 1pm PDT
@@ -67,10 +78,13 @@ export class PaymentCronService {
       }
 
       for (const paymentManagement of paymentManagements) {
+        const user = paymentManagement.user as UserDocument;
+        const screenTracking =
+          paymentManagement.screenTracking as ScreenTrackingDocument;
+
         try {
           // get default card token
           paymentManagementId = paymentManagement._id;
-          const user = paymentManagement.user as UserDocument;
           const cardToken = await this.loanPaymentProCardTokenModel.findOne({
             user,
             // paymentType: 'ACH',
@@ -212,27 +226,40 @@ export class PaymentCronService {
                 scheduleItem.status != 'failed' &&
                 scheduleItem.status != 'paid'
               ) {
-                if (!scheduleItem.transactionStatus) {
-                  // scheduleItem.date = this.addDays(2, scheduleItem.date);
-                  // scheduleItem.transactionStatus = newPaymentTransactionstatus;
-                } else if (scheduleItem.transactionStatus.length >= 1) {
-                  // if (scheduleItem.transactionStatus.length >= 1) {
-                  scheduleItem.date = this.addDays(0, scheduleItem.date);
-                  // } else {
-                  //   scheduleItem.date = this.addDays(2, scheduleItem.date);
-                  // }
-
+                if (scheduleItem.transactionStatus.length >= 1) {
                   scheduleItem.transactionStatus.push(transactionStatus);
-                  //if (scheduleItem.transactionStatus.length > 2) {
-
                   newPaymentSchedule.push(scheduleItem);
+
+                  const cronRequestObj = {
+                    user,
+                    id: '',
+                    connection: { remoteAddress: 'Cron Execution' },
+                    url: '/DelinquencyCron',
+                  };
+
+                  await this.logActivityService.createLogActivityUpdateUser(
+                    cronRequestObj,
+                    logActivityModuleNames.PAYMENT_SCHEDULE,
+                    `${user.userReference} Automatic payment failed. Details: ${error.message} `,
+                    {
+                      userId: user._id,
+                    },
+                    screenTracking._id,
+                    user,
+                  );
+
+                  await this.paymentService.triggerAutoPay(
+                    cronRequestObj,
+                    paymentManagementId,
+                    false,
+                  );
+
                   await this.paymentManagementModel.findByIdAndUpdate(
                     paymentManagementId,
                     {
                       canRunAutomaticPayment: false,
                     },
                   );
-                  //}
                 }
               }
             }
