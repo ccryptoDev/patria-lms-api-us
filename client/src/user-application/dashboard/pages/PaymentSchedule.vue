@@ -54,34 +54,34 @@
         <thead>
           <tr>
             <th style="width: 10px">#</th>
+            <th>Date</th>
             <th>Amount</th>
             <th>Status</th>
             <th>Payment Type</th>
-            <th>Start balance</th>
+            <!-- <th>Start balance</th> -->
             <th>Applied to Fees</th>
-            <th>Applied to Interest</th>
+            <!-- <th>Applied to Interest</th>
             <th>Applied to Principal</th>
-            <th>End Principal Balance</th>
-            <th>Date</th>
+            <th>End Principal Balance</th> -->
           </tr>
         </thead>
         <tbody>
           <tr v-for="(payment, index) in payments" :key="payment.paymentId">
             <td>{{ index + 1 }}</td>
+            <td>{{ payment.date | date }}</td>
             <td>{{ payment.amount | currency }}</td>
             <td v-if="payment.status == 'failed'">{{ payment.status }} - {{ payment.transactionMessage }}</td>
             <td v-if="payment.status == 'paid'">{{ payment.status }}</td>
             <td>{{ payment.paymentType }}</td>
-            <td>{{ payment.startPrincipal | currency }}</td>
+            <!--<td>{{ payment.startPrincipal | currency }}</td> -->
             <td>{{ payment.paidFees | currency }}</td>
-            <td>
+            <!-- <td>
               {{
                   (payment.paidInterest + payment.paidPastDueInterest) | currency
               }}
             </td>
             <td>{{ payment.paidPrincipal | currency }}</td>
-            <td>{{ payment.endPrincipal | currency }}</td>
-            <td>{{ payment.date | date }}</td>
+            <td>{{ payment.endPrincipal | currency }}</td> -->
           </tr>
         </tbody>
       </table>
@@ -89,43 +89,37 @@
     <div v-if="promopayStatus == true">
       <table>
         <thead>
-          <tr>
+<tr>
             <th style="width: 10px">#</th>
-            <th>Start balance</th>
-            <th>PMT Reference</th>
-            <!-- <th>Status</th>
-            <th>Payment Type</th> -->
-            <th>Amount</th>
-            <th>Applied to Fees</th>
-            <th>Applied to Interest1</th>
-            <th>Applied to Principal1</th>
-            <th>End Principal Balance</th>
             <th>Date</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Payment Type</th>
+            <!-- <th>Start balance</th> -->
+            <th>Applied to Fees</th>
+            <!-- <th>Applied to Interest</th>
+            <th>Applied to Principal</th>
+            <th>End Principal Balance</th> -->
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(payment, index) in promoPaymentLeft" :key="index">
+          <tr v-for="(payment, index) in payments" :key="payment.paymentId">
             <td>{{ index + 1 }}</td>
-            <td>{{ payment.startPrincipal | currency }}</td>
-            <td>PMT</td>
-            <!-- <td v-if="payment.status == 'failed'">
-              {{ payment.status }} - {{ payment.transactionMessage }}
-            </td>
-            <td v-if="payment.isRefund == true">Refunded</td>
-            <td v-else-if="payment.status == 'paid'">{{ payment.status }}</td>
-            <td>{{ payment.paymentType }}</td> -->
+            <td>{{ payment.date | date }}</td>
             <td>{{ payment.amount | currency }}</td>
+            <td v-if="payment.status == 'failed'">{{ payment.status }} - {{ payment.transactionMessage }}</td>
+            <td v-if="payment.status == 'paid'">{{ payment.status }}</td>
+            <td>{{ payment.paymentType }}</td>
+            <!--<td>{{ payment.startPrincipal | currency }}</td> -->
             <td>{{ payment.paidFees | currency }}</td>
-            <td>
+            <!-- <td>
               {{
-                  (payment.interest) | currency
+                  (payment.paidInterest + payment.paidPastDueInterest) | currency
               }}
             </td>
-            <td>{{ payment.principal | currency }}</td>
-            <td>
-              {{ (payment.endPrincipal) | currency }}
-            </td>
-            <td>{{ payment.date | date }}</td>
+            <td>{{ payment.paidPrincipal | currency }}</td>
+            <td>{{ payment.endPrincipal | currency }}</td> -->
+
           </tr>
         </tbody>
       </table>
@@ -147,27 +141,27 @@
         <thead>
           <tr>
             <th style="width: 10px">#</th>
-            <th>Unpaid Principal Balance</th>
-            <th>Principal</th>
-            <th>Interest</th>
-            <th>Fees</th>
-            <th>Amount</th>
             <th>Schedule Date</th>
+            <th>Amount</th>
+            <!-- <th>Unpaid Principal Balance</th>
+            <th>Principal</th>
+            <th>Interest</th> -->
+            <th>Fees</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="(paymentScheduleItem, index) in paymentScheduleLeft" :key="index">
             <td>{{ index + 1 }}</td>
-            <td>
+            <td>{{ paymentScheduleItem.date | date }}</td>
+            <td>{{ paymentScheduleItem.amount | currency }}</td>
+            <!-- <td>
               {{ paymentScheduleItem.startPrincipal | currency }}
             </td>
             <td>
               {{ paymentScheduleItem.principal | currency }}
             </td>
-            <td>{{ paymentScheduleItem.interest | currency }}</td>
+            <td>{{ paymentScheduleItem.interest | currency }}</td> -->
             <td>{{ paymentScheduleItem.fees | currency }}</td>
-            <td>{{ paymentScheduleItem.amount | currency }}</td>
-            <td>{{ paymentScheduleItem.date | date }}</td>
           </tr>
         </tbody>
       </table>

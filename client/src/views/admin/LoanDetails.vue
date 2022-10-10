@@ -124,8 +124,8 @@ export default Vue.extend({
     const { data } = await adminDashboardRequests.getPaymentManagement(
       this.$route.params.screenTrackingId
     );
-    this.paymentManagement = data;
-    this.paymentStatus = data.status;
+    this.paymentManagement = data.response;
+    this.paymentStatus = data.response.status;
     const { status } = this.$route?.query;
     if (status === 'MR') {
       this.isManualReview = true;
