@@ -49,7 +49,7 @@ export class DashboardService {
     private readonly logger: LoggerService,
     private readonly paymentService: PaymentService,
     private readonly loanSettingsService: LoanSettingsService,
-  ) { }
+  ) {}
 
   async getDashboard(userId: string, requestId: string) {
     // const userDocuments: UserDocumentsDocument | null =
@@ -220,6 +220,11 @@ export class DashboardService {
     paymentManagementData.paymentSchedule.forEach((payment) => {
       payment.date = moment(payment.date).utc().toDate();
     });
+
+    paymentManagementData.paymentSchedule =
+      paymentManagementData.paymentSchedule.filter((scheduleItem) => {
+        return moment().isAfter(scheduleItem.date);
+      });
 
     const response = {
       name,

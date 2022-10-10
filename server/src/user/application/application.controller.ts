@@ -201,7 +201,7 @@ export class ApplicationController {
     );
     const response = await lambda
       .invoke({
-        FunctionName: 'getpdf-staging',
+        FunctionName: 'getpdf-patria',
         InvocationType: 'RequestResponse',
         Payload: JSON.stringify(lambdaPayload),
         LogType: 'Tail',

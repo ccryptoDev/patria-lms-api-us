@@ -385,6 +385,9 @@ export class UserService {
       };base64,${signature.Body.toString('base64')}`;
     }
 
+    screenTrackingDocument.selectedOffer.interestRate = parseFloat(
+      screenTrackingDocument.selectedOffer.interestRate,
+    ).toFixed(2);
     const response = {
       userId: user.id,
       address: user.street,
