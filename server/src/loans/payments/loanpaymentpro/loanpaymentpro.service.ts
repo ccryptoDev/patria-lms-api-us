@@ -707,8 +707,7 @@ export class LoanpaymentproService {
         // $set: {
         isDefault: false,
         // },
-      },
-      { upsert: true },
+      }
     );
 
     //set Default Card

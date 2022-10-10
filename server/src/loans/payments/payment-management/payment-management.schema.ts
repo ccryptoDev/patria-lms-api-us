@@ -7,6 +7,7 @@ import { UserDocument } from '../../../user/user.schema';
 import { AdminDocument } from '../../../user/admin/admin.schema';
 import { IPaymentScheduleItem } from './payment-schedule-item.interface';
 import { promiseToPayItem } from './promise-to-pay-item.interface';
+import { ILedger } from '../../ledger/ledger.interface';
 
 export enum LOAN_STATUS {
   APPROVED = 'approved',

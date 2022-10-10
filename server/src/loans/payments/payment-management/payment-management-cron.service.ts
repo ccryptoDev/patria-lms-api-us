@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import moment from 'moment';
@@ -20,7 +20,10 @@ import { User, UserDocument } from '../../../user/user.schema';
 import { Roles, RolesDocument } from '../../../user/roles/roles.schema';
 import { Admin, AdminDocument } from '../../../user/admin/admin.schema';
 import { FlexPayService } from '../flex-pay/flex-pay.service';
-import { TransactionStatus } from '../flex-pay/flex.schema';
+import {
+  FlexTransactionReport,
+  TransactionStatus,
+} from '../flex-pay/flex.schema';
 
 @Injectable()
 export class PaymentManagementCronService {
@@ -38,7 +41,7 @@ export class PaymentManagementCronService {
     private readonly userModel: Model<UserDocument>,
     @InjectModel(Admin.name) private readonly adminModel: Model<AdminDocument>,
     @InjectModel(Roles.name) private readonly rolesModel: Model<RolesDocument>,
-  ) {}
+  ) { }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async checkPromoAvailability() {
@@ -47,8 +50,9 @@ export class PaymentManagementCronService {
       `${PaymentManagementCronService.name}#checkPromoAvailability`,
     );
     try {
-      const paymentManagements: PaymentManagementDocument[] =
-        await this.PaymentManagementModel.find({ promoStatus: 'available' });
+      const paymentManagements: PaymentManagementDocument[] = await this.PaymentManagementModel.find(
+        { promoStatus: 'available' },
+      );
       if (!paymentManagements || paymentManagements.length <= 0) {
         this.logger.log(
           'No payment management with available promo found',
@@ -161,21 +165,22 @@ export class PaymentManagementCronService {
 
     try {
       // check for payments due today
-      const paymentManagements: PaymentManagementDocument[] | null =
-        await this.PaymentManagementModel.find({
-          status: {
-            $in: [
-              'in-repayment',
-              'in-repayment prime',
-              'in-repayment non-prime',
-              'in-repayment delinquent1',
-              'in-repayment delinquent2',
-              'in-repayment delinquent3',
-              'in-repayment delinquent4',
-            ],
-          },
-          // screenTracking: '6316557011db2742dc99deb2',
-        }).populate('screenTracking');
+      const paymentManagements:
+        | PaymentManagementDocument[]
+        | null = await this.PaymentManagementModel.find({
+        status: {
+          $in: [
+            'in-repayment',
+            'in-repayment prime',
+            'in-repayment non-prime',
+            'in-repayment delinquent1',
+            'in-repayment delinquent2',
+            'in-repayment delinquent3',
+            'in-repayment delinquent4',
+          ],
+        },
+        // screenTracking: '6316557011db2742dc99deb2',
+      }).populate('screenTracking');
       if (!paymentManagements || paymentManagements.length <= 0) {
         this.logger.log(
           'No active loans found',
@@ -187,16 +192,14 @@ export class PaymentManagementCronService {
       for (const paymentManagement of paymentManagements) {
         try {
           paymentManagementId = paymentManagement._id;
-          const screenTracking: ScreenTrackingDocument =
-            paymentManagement.screenTracking as ScreenTrackingDocument;
+          const screenTracking: ScreenTrackingDocument = paymentManagement.screenTracking as ScreenTrackingDocument;
 
           // find next available payment schedule items that is before today's date
-          const paymentScheduleItems: IPaymentScheduleItem[] =
-            paymentManagement.paymentSchedule.filter(
-              (scheduleItem) =>
-                moment(scheduleItem.date).startOf('day').isBefore(today) &&
-                scheduleItem.status === 'opened',
-            );
+          const paymentScheduleItems: IPaymentScheduleItem[] = paymentManagement.paymentSchedule.filter(
+            (scheduleItem) =>
+              moment(scheduleItem.date).startOf('day').isBefore(today) &&
+              scheduleItem.status === 'opened',
+          );
 
           // If there is no late payments in the schedule
           if (!paymentScheduleItems || paymentScheduleItems.length <= 0) {
@@ -209,10 +212,9 @@ export class PaymentManagementCronService {
             continue;
           } else {
             const furthestLatePayment = paymentScheduleItems[0];
-            const updateStatus: PaymentManagementDocument['status'] =
-              await this.determineDelinquentTier(
-                moment(today).diff(furthestLatePayment.date, 'day'),
-              );
+            const updateStatus: PaymentManagementDocument['status'] = await this.determineDelinquentTier(
+              moment(today).diff(furthestLatePayment.date, 'day'),
+            );
             const delinquentDays = moment(today).diff(
               furthestLatePayment.date,
               'day',
@@ -251,10 +253,11 @@ export class PaymentManagementCronService {
             `${PaymentManagementCronService.name}#delinquencyCron`,
           );
 
-          const newPaymentManagement: PaymentManagementDocument | null =
-            await this.PaymentManagementModel.findOne({
+          const newPaymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+            {
               screenTracking,
-            });
+            },
+          );
           const { minimumPaymentAmount } = paymentManagement;
           const newPaymentSchedule = await this.paymentService.amortizeSchedule(
             minimumPaymentAmount,
@@ -343,18 +346,19 @@ export class PaymentManagementCronService {
   }
 
   @Cron(CronExpression.EVERY_HOUR)
-  async checkAchTransactionStatus() {
+  async checkAchTransactionStatus(dateRange = 15, sendEmail = true) {
     try {
       const requestId = String(Date.now());
       const transactions = await this.flexPayService.getAchTransactionStatus(
         requestId,
+        dateRange,
       );
 
       this.logger.log(
         'Updated Transactions',
-        `${PaymentManagementCronService.name}#checkAchTransactionStatus::transactions`,
+        `${PaymentManagementCronService.name}#checkAchTransactionStatus::transactions.length `,
         requestId,
-        transactions,
+        transactions.length,
       );
 
       for (const {
@@ -369,10 +373,10 @@ export class PaymentManagementCronService {
         });
 
         this.logger.log(
-          'Updated Transactions',
-          `${PaymentManagementCronService.name}#checkAchTransactionStatus::transactions`,
+          'Payment Management',
+          `${PaymentManagementCronService.name}#checkAchTransactionStatus::paymentManagement`,
           requestId,
-          transactions,
+          paymentManagement,
         );
 
         if (!paymentManagement) {
@@ -426,6 +430,9 @@ export class PaymentManagementCronService {
           await this.paymentService.handleReturnedPayment(
             screenTrackingId as string,
             paymentRef,
+            requestId,
+            transaction.returnMessage,
+            sendEmail,
           );
         }
       }
@@ -434,95 +441,78 @@ export class PaymentManagementCronService {
     }
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_1AM)
+  @Cron(CronExpression.EVERY_HOUR)
   async checkCardChargedTransaction() {
     try {
       const requestId = String(Date.now());
-      const transactions = await this.flexPayService.getAchTransactionStatus(
-        requestId,
-      );
+      const transactions =
+        await this.flexPayService.getChargedCardTransaction();
+      const { data, ok, error } = transactions;
 
-      this.logger.log(
-        'Pending Transactions',
-        `${PaymentManagementCronService.name}#checkAchTransactionStatus::transactions`,
-        requestId,
-        transactions,
-      );
-
-      for (const {
-        transaction,
-        screenTracking: screenTrackingId,
-        _id: achTransactionId,
-        paymentRef,
-        status: transactionStatus,
-      } of transactions) {
-        const paymentManagement = await this.PaymentManagementModel.findOne({
-          screenTracking: transaction.screenTracking,
-        });
-
+      if (!ok) {
         this.logger.log(
-          'Updated Transactions',
-          `${PaymentManagementCronService.name}#checkAchTransactionStatus::transactions`,
+          'Got Error While Getting Pending Transaction from Database',
+          `${PaymentManagementCronService.name}#checkCardChargedTransaction::transactions`,
           requestId,
-          transactions,
+          error,
         );
+        throw new HttpException(
+          'Got Error While Getting Pending Transaction from Database',
+          500,
+        );
+      }
 
-        if (!paymentManagement) {
-          continue;
-        }
+      for (let i = 0; i < data.length; i++) {
+        const flexReport = data[i];
 
-        const isPastSettleDate =
-          new Date() >= new Date(transaction?.settleDate);
+        if (!flexReport) continue;
+        const { transaction } = flexReport;
 
-        if (
-          transactionStatus === TransactionStatus.SETTLED &&
-          isPastSettleDate
-        ) {
-          this.logger.log(
-            'Approved Payment',
-            `${PaymentManagementCronService.name}#checkAchTransactionStatus::transaction`,
-            requestId,
-            transaction,
-          );
-
-          await this.flexPayService.updateTransactionContext(
-            { _id: achTransactionId },
-            { status: TransactionStatus.APPROVED },
-          );
-        }
-
-        const isPastAcheEffectiveDate =
-          new Date() >
-          moment(transaction?.achEffectiveDate).endOf('day').toDate();
-
-        const isNonProcessedTransaction =
-          transactionStatus === TransactionStatus.PENDING &&
-          isPastAcheEffectiveDate;
+        if (!transaction) continue;
 
         if (
-          transactionStatus === TransactionStatus.FAILED ||
-          isNonProcessedTransaction
+          transaction.response === TransactionStatus.PENDING ||
+          transaction.status === TransactionStatus.IN_SETTLEMENT
         ) {
-          this.logger.log(
-            'Returned Payment',
-            `${PaymentManagementCronService.name}#checkAchTransactionStatus::transaction`,
-            requestId,
+          const newFlexReport = await this.flexPayService.getChargedCardStatus(
             transaction,
           );
+          if (!newFlexReport.ok) {
+            this.logger.error(
+              'Got Error While Getting Status From Flex API',
+              `${PaymentManagementCronService.name}#checkCardChargedTransaction::transactions`,
+              requestId,
+              newFlexReport.error,
+            );
+            continue;
+          }
+          const newFlexReportTransaction = newFlexReport?.data?.data;
+          const { status: newStatus, response: newResponse } =
+            newFlexReportTransaction;
 
-          await this.flexPayService.updateTransactionContext(
-            { _id: achTransactionId },
-            { status: TransactionStatus.FAILED },
-          );
-
-          await this.paymentService.handleReturnedPayment(
-            screenTrackingId as string,
-            paymentRef,
-          );
+          if (
+            newResponse === TransactionStatus.APPROVED.toLowerCase() ||
+            newStatus === TransactionStatus.SETTLED.toLowerCase()
+          ) {
+            const query = { _id: flexReport._id };
+            const payload = {
+              'transaction.response': newResponse,
+              'transaction.status': newStatus,
+            };
+            this.flexPayService.updateTransactionContext(query, payload);
+          }
+          return newFlexReport;
         }
       }
+
+      this.logger.log(
+        'Cron Job Completed Successfully Pending Transactions Re-Check',
+        `${PaymentManagementCronService.name}#checkCardChargedTransaction::transactions`,
+        requestId,
+        null,
+      );
     } catch (error) {
-      this.logger.error('ERROR::checkAchTransactionStatus:', error);
+      this.logger.error('ERROR::checkCardChargedTransaction:', error);
     }
   }
 
@@ -548,19 +538,20 @@ export class PaymentManagementCronService {
 
     try {
       // check for payments due today
-      const paymentManagements: PaymentManagementDocument[] | null =
-        await this.PaymentManagementModel.find({
-          status: {
-            $in: [
-              'in-repayment prime',
-              'in-repayment non-prime',
-              'in-repayment delinquent1',
-              'in-repayment delinquent2',
-              'in-repayment delinquent3',
-              'in-repayment delinquent4',
-            ],
-          },
-        }).populate('screenTracking');
+      const paymentManagements:
+        | PaymentManagementDocument[]
+        | null = await this.PaymentManagementModel.find({
+        status: {
+          $in: [
+            'in-repayment prime',
+            'in-repayment non-prime',
+            'in-repayment delinquent1',
+            'in-repayment delinquent2',
+            'in-repayment delinquent3',
+            'in-repayment delinquent4',
+          ],
+        },
+      }).populate('screenTracking');
       if (!paymentManagements || paymentManagements.length <= 0) {
         this.logger.log(
           'No active loans found',
@@ -572,15 +563,13 @@ export class PaymentManagementCronService {
       for (const paymentManagement of paymentManagements) {
         try {
           paymentManagementId = paymentManagement._id;
-          const screenTracking: ScreenTrackingDocument =
-            paymentManagement.screenTracking as ScreenTrackingDocument;
+          const screenTracking: ScreenTrackingDocument = paymentManagement.screenTracking as ScreenTrackingDocument;
           // find next available payment schedule items that  before today's date
-          const paymentScheduleItems: IPaymentScheduleItem[] =
-            paymentManagement.paymentSchedule.filter(
-              (scheduleItem) =>
-                moment(scheduleItem.date).startOf('day').isBefore(today) &&
-                scheduleItem.status === 'opened',
-            );
+          const paymentScheduleItems: IPaymentScheduleItem[] = paymentManagement.paymentSchedule.filter(
+            (scheduleItem) =>
+              moment(scheduleItem.date).startOf('day').isBefore(today) &&
+              scheduleItem.status === 'opened',
+          );
 
           // If there is no late payments in the schedule
           if (!paymentScheduleItems || paymentScheduleItems.length <= 0) {
@@ -593,11 +582,10 @@ export class PaymentManagementCronService {
             continue;
           } else {
             const furthestLatePayment = paymentScheduleItems[0];
-            const collectionStatus: PaymentManagementDocument['collectionAssignStatus'] =
-              await this.determineCollectionTier(
-                moment(today).diff(furthestLatePayment.date, 'day'),
-                loanSettings.delinquencyPeriod,
-              );
+            const collectionStatus: PaymentManagementDocument['collectionAssignStatus'] = await this.determineCollectionTier(
+              moment(today).diff(furthestLatePayment.date, 'day'),
+              loanSettings.delinquencyPeriod,
+            );
             let collectionAccountStatus: PaymentManagementDocument['collectionsAccountStatus'] =
               '';
             if (collectionStatus != '') {

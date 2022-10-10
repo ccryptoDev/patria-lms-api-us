@@ -6,6 +6,7 @@ import {
   Post,
   Req,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../../../user/auth/jwt-auth.guard';
@@ -28,9 +29,12 @@ export class PaymentManagementController {
   ) {}
 
   @Post('test/checkAchTransactionStatus')
-  async checkAchTransactionStatus() {
+  async checkAchTransactionStatus(@Query('dateRange') dateRange = '15') {
     try {
-      await this.paymentManagementCron.checkAchTransactionStatus();
+      await this.paymentManagementCron.checkAchTransactionStatus(
+        parseInt(dateRange),
+        false,
+      );
     } catch (error) {
       throw error;
     }
@@ -43,7 +47,8 @@ export class PaymentManagementController {
     }
 
     try {
-      await this.paymentManagementCron.checkExpiredApplications();
+      // await this.paymentManagementCron.checkExpiredApplications();
+      return await this.paymentManagementCron.checkCardChargedTransaction();
     } catch (error) {
       throw error;
     }

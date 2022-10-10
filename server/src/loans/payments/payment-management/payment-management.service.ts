@@ -192,7 +192,7 @@ export class PaymentManagementService {
       paymentManagement = await this.paymentManagementModel.findOneAndUpdate(
         { screenTracking: screenTracking._id },
         paymentManagementObject,
-        { new: true, upsert: true },
+        { new: true },
       );
     } else {
       paymentManagement = await this.paymentManagementModel.create(
