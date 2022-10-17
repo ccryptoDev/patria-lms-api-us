@@ -221,10 +221,10 @@ export class DashboardService {
       payment.date = moment(payment.date).utc().toDate();
     });
 
-    paymentManagementData.paymentSchedule =
-      paymentManagementData.paymentSchedule.filter((scheduleItem) => {
-        return moment().isAfter(scheduleItem.date);
-      });
+    // paymentManagementData.paymentSchedule =
+    //   paymentManagementData.paymentSchedule.filter((scheduleItem) => {
+    //     return moment().isAfter(scheduleItem.date);
+    //   });
 
     const response = {
       name,

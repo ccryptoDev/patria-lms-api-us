@@ -41,7 +41,7 @@ export class PaymentManagementCronService {
     private readonly userModel: Model<UserDocument>,
     @InjectModel(Admin.name) private readonly adminModel: Model<AdminDocument>,
     @InjectModel(Roles.name) private readonly rolesModel: Model<RolesDocument>,
-  ) { }
+  ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async checkPromoAvailability() {
@@ -50,9 +50,8 @@ export class PaymentManagementCronService {
       `${PaymentManagementCronService.name}#checkPromoAvailability`,
     );
     try {
-      const paymentManagements: PaymentManagementDocument[] = await this.PaymentManagementModel.find(
-        { promoStatus: 'available' },
-      );
+      const paymentManagements: PaymentManagementDocument[] =
+        await this.PaymentManagementModel.find({ promoStatus: 'available' });
       if (!paymentManagements || paymentManagements.length <= 0) {
         this.logger.log(
           'No payment management with available promo found',
@@ -165,22 +164,21 @@ export class PaymentManagementCronService {
 
     try {
       // check for payments due today
-      const paymentManagements:
-        | PaymentManagementDocument[]
-        | null = await this.PaymentManagementModel.find({
-        status: {
-          $in: [
-            'in-repayment',
-            'in-repayment prime',
-            'in-repayment non-prime',
-            'in-repayment delinquent1',
-            'in-repayment delinquent2',
-            'in-repayment delinquent3',
-            'in-repayment delinquent4',
-          ],
-        },
-        // screenTracking: '6316557011db2742dc99deb2',
-      }).populate('screenTracking');
+      const paymentManagements: PaymentManagementDocument[] | null =
+        await this.PaymentManagementModel.find({
+          status: {
+            $in: [
+              'in-repayment',
+              'in-repayment prime',
+              'in-repayment non-prime',
+              'in-repayment delinquent1',
+              'in-repayment delinquent2',
+              'in-repayment delinquent3',
+              'in-repayment delinquent4',
+            ],
+          },
+          // screenTracking: '6316557011db2742dc99deb2',
+        }).populate('screenTracking');
       if (!paymentManagements || paymentManagements.length <= 0) {
         this.logger.log(
           'No active loans found',
@@ -192,14 +190,16 @@ export class PaymentManagementCronService {
       for (const paymentManagement of paymentManagements) {
         try {
           paymentManagementId = paymentManagement._id;
-          const screenTracking: ScreenTrackingDocument = paymentManagement.screenTracking as ScreenTrackingDocument;
+          const screenTracking: ScreenTrackingDocument =
+            paymentManagement.screenTracking as ScreenTrackingDocument;
 
           // find next available payment schedule items that is before today's date
-          const paymentScheduleItems: IPaymentScheduleItem[] = paymentManagement.paymentSchedule.filter(
-            (scheduleItem) =>
-              moment(scheduleItem.date).startOf('day').isBefore(today) &&
-              scheduleItem.status === 'opened',
-          );
+          const paymentScheduleItems: IPaymentScheduleItem[] =
+            paymentManagement.paymentSchedule.filter(
+              (scheduleItem) =>
+                moment(scheduleItem.date).startOf('day').isBefore(today) &&
+                scheduleItem.status === 'opened',
+            );
 
           // If there is no late payments in the schedule
           if (!paymentScheduleItems || paymentScheduleItems.length <= 0) {
@@ -212,9 +212,10 @@ export class PaymentManagementCronService {
             continue;
           } else {
             const furthestLatePayment = paymentScheduleItems[0];
-            const updateStatus: PaymentManagementDocument['status'] = await this.determineDelinquentTier(
-              moment(today).diff(furthestLatePayment.date, 'day'),
-            );
+            const updateStatus: PaymentManagementDocument['status'] =
+              await this.determineDelinquentTier(
+                moment(today).diff(furthestLatePayment.date, 'day'),
+              );
             const delinquentDays = moment(today).diff(
               furthestLatePayment.date,
               'day',
@@ -253,11 +254,10 @@ export class PaymentManagementCronService {
             `${PaymentManagementCronService.name}#delinquencyCron`,
           );
 
-          const newPaymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
-            {
+          const newPaymentManagement: PaymentManagementDocument | null =
+            await this.PaymentManagementModel.findOne({
               screenTracking,
-            },
-          );
+            });
           const { minimumPaymentAmount } = paymentManagement;
           const newPaymentSchedule = await this.paymentService.amortizeSchedule(
             minimumPaymentAmount,
@@ -538,20 +538,19 @@ export class PaymentManagementCronService {
 
     try {
       // check for payments due today
-      const paymentManagements:
-        | PaymentManagementDocument[]
-        | null = await this.PaymentManagementModel.find({
-        status: {
-          $in: [
-            'in-repayment prime',
-            'in-repayment non-prime',
-            'in-repayment delinquent1',
-            'in-repayment delinquent2',
-            'in-repayment delinquent3',
-            'in-repayment delinquent4',
-          ],
-        },
-      }).populate('screenTracking');
+      const paymentManagements: PaymentManagementDocument[] | null =
+        await this.PaymentManagementModel.find({
+          status: {
+            $in: [
+              'in-repayment prime',
+              'in-repayment non-prime',
+              'in-repayment delinquent1',
+              'in-repayment delinquent2',
+              'in-repayment delinquent3',
+              'in-repayment delinquent4',
+            ],
+          },
+        }).populate('screenTracking');
       if (!paymentManagements || paymentManagements.length <= 0) {
         this.logger.log(
           'No active loans found',
@@ -563,13 +562,15 @@ export class PaymentManagementCronService {
       for (const paymentManagement of paymentManagements) {
         try {
           paymentManagementId = paymentManagement._id;
-          const screenTracking: ScreenTrackingDocument = paymentManagement.screenTracking as ScreenTrackingDocument;
+          const screenTracking: ScreenTrackingDocument =
+            paymentManagement.screenTracking as ScreenTrackingDocument;
           // find next available payment schedule items that  before today's date
-          const paymentScheduleItems: IPaymentScheduleItem[] = paymentManagement.paymentSchedule.filter(
-            (scheduleItem) =>
-              moment(scheduleItem.date).startOf('day').isBefore(today) &&
-              scheduleItem.status === 'opened',
-          );
+          const paymentScheduleItems: IPaymentScheduleItem[] =
+            paymentManagement.paymentSchedule.filter(
+              (scheduleItem) =>
+                moment(scheduleItem.date).startOf('day').isBefore(today) &&
+                scheduleItem.status === 'opened',
+            );
 
           // If there is no late payments in the schedule
           if (!paymentScheduleItems || paymentScheduleItems.length <= 0) {
@@ -582,10 +583,11 @@ export class PaymentManagementCronService {
             continue;
           } else {
             const furthestLatePayment = paymentScheduleItems[0];
-            const collectionStatus: PaymentManagementDocument['collectionAssignStatus'] = await this.determineCollectionTier(
-              moment(today).diff(furthestLatePayment.date, 'day'),
-              loanSettings.delinquencyPeriod,
-            );
+            const collectionStatus: PaymentManagementDocument['collectionAssignStatus'] =
+              await this.determineCollectionTier(
+                moment(today).diff(furthestLatePayment.date, 'day'),
+                loanSettings.delinquencyPeriod,
+              );
             let collectionAccountStatus: PaymentManagementDocument['collectionsAccountStatus'] =
               '';
             if (collectionStatus != '') {

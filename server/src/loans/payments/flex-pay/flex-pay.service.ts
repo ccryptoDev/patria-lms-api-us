@@ -720,7 +720,7 @@ export class FlexPayService {
 
       const card = {
         entry_type: 'keyed',
-        number: cardData.cardNumber,
+        number: cardData.cardNumberLastFour,
         expiration_date: `${cardData.expMonth}/${cardData.expYear}`,
         cvc: cardData.cardCode, // TODO
       };

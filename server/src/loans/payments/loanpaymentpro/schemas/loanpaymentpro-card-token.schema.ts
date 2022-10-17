@@ -74,7 +74,7 @@ export class LoanPaymentProCardToken {
   @Prop({ required: false })
   accountType?: string;
 
-  @Prop({ default: true })
+  @Prop({ default: false })
   isDefault: boolean;
 
   @Prop()

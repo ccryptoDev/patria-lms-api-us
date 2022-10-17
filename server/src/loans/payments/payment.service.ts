@@ -1150,7 +1150,7 @@ export class PaymentService {
     });
 
     const response = {
-      paymentAmount: paymentAmount + ledger.accruedFeesBalance,
+      paymentAmount: paymentAmount,
       ledger,
       preview,
       newPaymentScheduleItem:
@@ -1182,12 +1182,20 @@ export class PaymentService {
     }
     const today = moment().startOf('day').toDate();
     const dateBoundary = moment(today).add(2, 'months').toDate();
-    const { currentPaymentAmount, payOffAmount } = paymentManagement;
+    const { currentPaymentAmount } = paymentManagement;
     if (moment(paymentDate).startOf('day').isBefore(today)) {
       paymentDate = today;
     } else if (moment(paymentDate).startOf('day').isAfter(dateBoundary)) {
       paymentDate = today;
     }
+
+    const ledger = this.ledgerService.getPaymentLedger(
+      paymentManagement,
+      paymentDate,
+      requestId,
+    );
+
+    const { payoff: payOffAmount } = ledger;
 
     if (!amount || amount <= 0) {
       amount =
@@ -1205,7 +1213,7 @@ export class PaymentService {
       paymentDate,
       requestId,
     );
-    const { ledger } = previewResult;
+    // const { ledger } = previewResult;
 
     const response = {
       regularPayment:
