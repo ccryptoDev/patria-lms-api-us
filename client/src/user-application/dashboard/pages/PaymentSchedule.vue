@@ -177,6 +177,7 @@ import { getDashboardData } from "@/user-application/dashboard/api";
 import MakePaymentButton from "@/user-application/dashboard/components/MakePaymentButton.vue";
 import ChangePaymentAmount from "@/user-application/dashboard/components/ChangePaymentAmount.vue";
 import { errorHandler } from "@/api/error-handler";
+import moment from "moment";
 
 export default Vue.extend({
   components: { MakePaymentButton, ChangePaymentAmount },
@@ -208,7 +209,7 @@ export default Vue.extend({
     paymentScheduleLeft(): any[] | undefined {
       if (this.paymentManagement && this.paymentManagement.paymentSchedule) {
         const response = this.paymentManagement.paymentSchedule.filter(
-          (scheduleItem: any) => scheduleItem.status === "opened"
+          (scheduleItem: any) => scheduleItem.status === "opened" && moment().isAfter(scheduleItem.date)
         );
         return response;
       }

@@ -38,6 +38,7 @@ export class LedgerService {
       principalBalance: 0,
       promoStatus: 'unavailable',
       unpaidInterestBalance: 0,
+      unpaidPrincipalBalance: 0,
       delinquentAmount: 0,
     };
   }
@@ -48,7 +49,7 @@ export class LedgerService {
     requestId: string,
   ): ILedger {
     const { payOffAmount, principalAmount } = paymentManagement;
-    const { paymentSchedule } = paymentManagement;
+    const { paymentSchedule, initialPaymentSchedule } = paymentManagement;
     this.pendingPayments = 0;
     this.paymentManagement1 = paymentManagement;
     let ledger = this.getEmptyLedger();
@@ -114,15 +115,24 @@ export class LedgerService {
       if (isEarlyPayment) {
         ledger = this.handleEarlyPayment(ledger, scheduleItem);
       } else if (isPastDue) {
-        const lastPaymentScheduleDate =
+        const lastPaymentDate = paymentSchedule.filter((scheduleItem) => {
+          return scheduleItem.status === 'paid';
+        });
+
+        let lastPaymentScheduleDate =
           pastDueFlag && index - 1
             ? paymentSchedule[index - 1]?.date
-            : ledger.loanStartDate;
+            : moment(ledger.loanStartDate).toDate();
+        if (lastPaymentDate.length > 0 && !pastDueFlag) {
+          lastPaymentScheduleDate =
+            lastPaymentDate[lastPaymentDate.length - 1]?.date;
+        }
         ledger = this.handleOpenedPastDue(
           ledger,
           scheduleItem,
           num,
           paymentSchedule,
+          initialPaymentSchedule,
           lastPaymentScheduleDate,
         );
         pastDueFlag = true;
@@ -130,7 +140,6 @@ export class LedgerService {
         ledger = this.handlePaymentMade(ledger, scheduleItem);
       } else {
         // future payment
-
         if (scheduleItem.status === 'opened') {
           if (pastDueFlag && index - 1) {
             const daysPastDue = Math.abs(
@@ -143,7 +152,9 @@ export class LedgerService {
             );
             ledger.daysPastDue = daysPastDue;
             ledger.cycleAccruedInterest =
-              ledger.dailyInterest * daysPastDue * ledger.principalBalance;
+              ledger.dailyInterest *
+              ledger.daysPastDue *
+              ledger.principalBalance;
           }
 
           if (this.pendingPayments == 1) {
@@ -175,7 +186,8 @@ export class LedgerService {
     ledger.delinquentAmount =
       ledger.unpaidInterestBalance +
       ledger.cycleAccruedInterest +
-      ledger.accruedFeesBalance;
+      ledger.accruedFeesBalance +
+      ledger.unpaidPrincipalBalance;
 
     return ledger;
   }
@@ -289,6 +301,7 @@ export class LedgerService {
     scheduleItem: IPaymentScheduleItem,
     index: number,
     paySchedule: IPaymentScheduleItem[],
+    initPaySchedule: IPaymentScheduleItem[],
     lastPaymentScheduleDate: Date,
   ): ILedger {
     if (
@@ -357,6 +370,13 @@ export class LedgerService {
       5,
     );
 
+    const originalSchedule = initPaySchedule.filter((item) => {
+      return scheduleItem.week === item.week;
+    });
+    ledger.unpaidPrincipalBalance = this.toFixed(
+      ledger.unpaidPrincipalBalance + originalSchedule[0]?.principal,
+      5,
+    );
     // if (
     //   moment(ledger.ledgerDate).isSameOrAfter(
     //     moment(this.paymentManagement1.nextPaymentSchedule),

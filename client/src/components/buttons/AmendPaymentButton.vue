@@ -298,12 +298,12 @@ extend("positive", (value: any) => {
     const parsedAmount = value.replace(/[$,]/g, "");
     const isLowerThanOne = parseFloat(parsedAmount) < 1;
     if (isLowerThanOne) {
-      return "Amount must be greater than $1.00";
+      return "Amount must be greater than $5.00";
     }
     return true;
   } else {
     if (value < 1) {
-      return "Amount must be greater than $1.00";
+      return "Amount must be greater than $5.00";
     }
     return true;
   }

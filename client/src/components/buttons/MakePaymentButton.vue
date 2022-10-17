@@ -9,37 +9,63 @@
       <button class="primary" style="margin-right: 10px">Make Payment</button>
       <span class="tooltiptextleft">Can Make Payment</span>
     </div>
-    <VueFinalModal v-model="modal" classes="share-modal-container" content-class="share-modal-content"
-      :clickToClose="false">
-      <div v-if="previewPaymentComponent" class="container" style="width: 35vw;height: 600px;overflow:auto;">
+    <VueFinalModal
+      v-model="modal"
+      classes="share-modal-container"
+      content-class="share-modal-content"
+      :clickToClose="false"
+    >
+      <div
+        v-if="previewPaymentComponent"
+        class="container"
+        style="width: 35vw;height: 600px;overflow:auto;"
+      >
         <h3>Make Payment</h3>
         <ValidationObserver v-slot="{ invalid }">
           <form @submit="onNext">
             <div class="row">
-              <div @click="setPaymentType('regular')" style="margin-right: 10px; ">
+              <div
+                @click="setPaymentType('regular')"
+                style="margin-right: 10px; "
+              >
                 <div>
-                  Weekly Payment
+                  Suggested Payment
                 </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;"
-                  class="make-payment-btn" :class="{ 'make-payment-btn-primary': isMonthlyPayment }"
-                  @click="toggleMonthlyPayment">
+                <div
+                  style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;"
+                  class="make-payment-btn"
+                  :class="{ 'make-payment-btn-primary': isMonthlyPayment }"
+                  @click="toggleMonthlyPayment"
+                >
                   <div>
-                    {{ previewResults.paymentAmount | currency }}
+                    {{ suggestedPaymentAmount | currency }}
                   </div>
                   <div class="ico">
-                    <font-awesome-icon v-show="isMonthlyPayment" icon="check" style="vertical-align: middle;" />
+                    <font-awesome-icon
+                      v-show="isMonthlyPayment"
+                      icon="check"
+                      style="vertical-align: middle;"
+                    />
                   </div>
                 </div>
               </div>
               <div @click="setPaymentType('payoff')" style="margin-left: 10px;">
                 <div>Payoff</div>
-                <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;"
-                  class="make-payment-btn" :class="{ 'make-payment-btn-primary': isPayoff }" @click="togglePayoff">
+                <div
+                  style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;"
+                  class="make-payment-btn"
+                  :class="{ 'make-payment-btn-primary': isPayoff }"
+                  @click="togglePayoff"
+                >
                   <div>
-                    {{ previewResult.ledger.payoff | currency }}
+                    {{ payoffAmount | currency }}
                   </div>
                   <div class="ico">
-                    <font-awesome-icon v-show="isPayoff" icon="check" style="vertical-align: middle;" />
+                    <font-awesome-icon
+                      v-show="isPayoff"
+                      icon="check"
+                      style="vertical-align: middle;"
+                    />
                   </div>
                 </div>
               </div>
@@ -48,20 +74,41 @@
               <div style="margin-right: 10px; width: 48%;">
                 <label>Payment Date</label>
                 <div>
-                  <Datepicker v-model="paymentDate" @selected="onDateSelected" :disabled-dates="disabledDates"
-                    :format="'MM/dd/yyyy'" :input-class="'w-100 form-control'" />
+                  <Datepicker
+                    v-model="paymentDate"
+                    @selected="onDateSelected"
+                    :disabled-dates="disabledDates"
+                    :format="'MM/dd/yyyy'"
+                    :input-class="'w-100 form-control'"
+                  />
                 </div>
               </div>
               <div style="margin-left: 10px; width: 48%;">
                 <label>Amount</label>
                 <div>
-                  <ValidationProvider rules="positive" mode="lazy" v-slot="{ errors }">
-                    <input type="text" v-mask="mask" v-model="amount" :class="{
-                      'text-danger': errors[0],
-                      'amount-input-error': errors[0],
-                      'form-control': true,
-                    }" style="width: 100%;" @blur="onAmountBlur" @keydown="onAmountKeyDown" />
-                    <span class="text-danger amount-error" style="display: block;">{{ errors[0] }}</span>
+                  <ValidationProvider
+                    rules="positive"
+                    mode="lazy"
+                    v-slot="{ errors }"
+                  >
+                    <input
+                      type="text"
+                      v-mask="mask"
+                      v-model="amount"
+                      :class="{
+                        'text-danger': errors[0],
+                        'amount-input-error': errors[0],
+                        'form-control': true,
+                      }"
+                      style="width: 100%;"
+                      @blur="onAmountBlur"
+                      @keydown="onAmountKeyDown"
+                    />
+                    <span
+                      class="text-danger amount-error"
+                      style="display: block;"
+                      >{{ errors[0] }}</span
+                    >
                   </ValidationProvider>
                 </div>
               </div>
@@ -72,16 +119,24 @@
                   <!-- <label>Debit Card/Credit Card</label> -->
                   <label>Bank Accounts</label>
                   <div>
-                    <select v-model="selectedCard" class="form-control" @change="onSelectPaymentMethod($event)">
-                      <option v-for="card in allPaymentMethods" :key="card.paymentMethodToken" :value="card._id">
-                        {{showAccountList(card)}}
+                    <select
+                      v-model="selectedCard"
+                      class="form-control"
+                      @change="onSelectPaymentMethod($event)"
+                    >
+                      <option
+                        v-for="card in allPaymentMethods"
+                        :key="card.paymentMethodToken"
+                        :value="card._id"
+                      >
+                        {{ showAccountList(card) }}
                       </option>
                     </select>
                   </div>
                 </div>
               </div>
             </div>
-            <div class="row">
+            <!-- <div class="row">
               <p>Payments will be applied fully to outstanding amounts.</p>
             </div>
             <div class="row">
@@ -105,31 +160,34 @@
                       {{ previewResult.preview.accruedInterest | currency }}
                     </td>
                   </tr>
-                  <tr v-if="
-                    previewResult.preview.accruedBalance.unpaidInterest > 0
-                  ">
+                  <tr
+                    v-if="
+                      previewResult.preview.accruedBalance.unpaidInterest > 0
+                    "
+                  >
                     <td class="text-left">
                       Unpaid Interest
-                      <span style="font-size: 0.80rem; color: #888;">({{ previewResult.preview.daysPastDue }}
+                      <span style="font-size: 0.80rem; color: #888;"
+                        >({{ previewResult.preview.daysPastDue }}
                         day(s) past due)
                       </span>
                     </td>
                     <td class="text-right" style="width: 120;">
                       {{
-                      previewResult.preview.accruedBalance.unpaidInterest
-                      | currency
+                        previewResult.preview.accruedBalance.unpaidInterest
+                          | currency
                       }}
                     </td>
                     <td class="text-right" style="width: 120;">
                       {{
-                      previewResult.preview.paymentBalance.unpaidInterest
-                      | currency
+                        previewResult.preview.paymentBalance.unpaidInterest
+                          | currency
                       }}
                     </td>
                     <td class="text-right" style="width: 120;">
                       {{
-                      previewResult.preview.unpaidBalance.unpaidInterest
-                      | currency
+                        previewResult.preview.unpaidBalance.unpaidInterest
+                          | currency
                       }}
                     </td>
                   </tr>
@@ -137,17 +195,17 @@
                     <td class="text-left">Interest Balance</td>
                     <td class="text-right" style="width: 120;">
                       {{
-                      previewResult.preview.accruedBalance.interest | currency
+                        previewResult.preview.accruedBalance.interest | currency
                       }}
                     </td>
                     <td class="text-right" style="width: 120;">
                       {{
-                      previewResult.preview.paymentBalance.interest | currency
+                        previewResult.preview.paymentBalance.interest | currency
                       }}
                     </td>
                     <td class="text-right" style="width: 120;">
                       {{
-                      previewResult.preview.unpaidBalance.interest | currency
+                        previewResult.preview.unpaidBalance.interest | currency
                       }}
                     </td>
                   </tr>
@@ -155,30 +213,39 @@
                     <td class="text-left">Principal Balance</td>
                     <td class="text-right" style="width: 120;">
                       {{
-                      previewResult.preview.accruedBalance.principal
-                      | currency
+                        previewResult.preview.accruedBalance.principal
+                          | currency
                       }}
                     </td>
                     <td class="text-right" style="width: 120;">
                       {{
-                      previewResult.preview.paymentBalance.principal
-                      | currency
+                        previewResult.preview.paymentBalance.principal
+                          | currency
                       }}
                     </td>
                     <td class="text-right" style="width: 120px;">
                       {{
-                      previewResult.preview.unpaidBalance.principal | currency
+                        previewResult.preview.unpaidBalance.principal | currency
                       }}
                     </td>
                   </tr>
                 </tbody>
               </table>
-            </div>
+            </div> -->
             <div class="row">
-              <button @click="hidePreviewPayment" class="secondary" style="margin-right: 10px;">
+              <button
+                @click="hidePreviewPayment"
+                class="secondary"
+                style="margin-right: 10px;"
+              >
                 Cancel
               </button>
-              <button :disabled="invalid" type="submit" class="primary" style="margin-left: 10px;">
+              <button
+                :disabled="invalid"
+                type="submit"
+                class="primary"
+                style="margin-left: 10px;"
+              >
                 Next
               </button>
             </div>
@@ -230,10 +297,19 @@
             </tbody>
           </table> -->
           <div style="margin-top: 15px;">
-            <button @click="goToPreviewPayment" class="secondary" style="margin-right: 10px;">
+            <button
+              @click="goToPreviewPayment"
+              class="secondary"
+              style="margin-right: 10px;"
+            >
               Back
             </button>
-            <button @click="submitPayment" style="margin-left: 10px;" class="primary" :disabled="isLoading">
+            <button
+              @click="submitPayment"
+              style="margin-left: 10px;"
+              class="primary"
+              :disabled="isLoading"
+            >
               <span v-if="isPaymentToday">Submit Payment</span>
               <span v-else>Schedule Payment</span>
               <b-spinner small v-show="isLoading"></b-spinner>
@@ -258,14 +334,14 @@ import { isCardExpired } from "@/admin-dashboard/helpers/";
 extend("positive", (value: any) => {
   if (typeof value === "string") {
     const parsedAmount = value.replace(/[$,]/g, "");
-    const isLowerThanOne = parseFloat(parsedAmount) < 1;
+    const isLowerThanOne = parseFloat(parsedAmount) < 5;
     if (isLowerThanOne) {
-      return "Amount must be greater than $1.00";
+      return "Amount must be greater than $5.00";
     }
     return true;
   } else {
     if (value < 1) {
-      return "Amount must be greater than $1.00";
+      return "Amount must be greater than $5.00";
     }
     return true;
   }
@@ -325,6 +401,8 @@ export default Vue.extend({
           .startOf("day")
           .toDate(),
       },
+      payoffAmount: 0,
+      suggestedPaymentAmount: 0,
     };
   },
 
@@ -367,17 +445,16 @@ export default Vue.extend({
     },
     showAccountList(data: any) {
       let value = null;
-      if (data?.paymentType === 'ACH') {
+      if (data?.paymentType === "ACH") {
         value = `${data.bankName} - ********${data.accountNumber
           .split("")
           .reverse()
           .slice(0, 4)
-          .join("")}`
+          .join("")}`;
       } else {
-        value = `${data.nameOnCard} - ${data.cardNumberLastFour}`
+        value = `${data.nameOnCard} - ${data.cardNumberLastFour}`;
       }
-      return value
-
+      return value;
     },
     async showPopup() {
       await this.$swal({
@@ -440,6 +517,7 @@ export default Vue.extend({
       const { previewResult } = data;
 
       this.amount = Number(previewResult.paymentAmount).toFixed(2);
+
       this.newScheduleItemTransactionId =
         previewResult.preview.newScheduleItemTransactionId;
       this.previewResult = previewResult;
@@ -469,13 +547,16 @@ export default Vue.extend({
       );
       const { previewResult } = data;
 
-      this.amount = Number(previewResult.paymentAmount).toFixed(2);
+      this.suggestedPaymentAmount =
+        previewResult.ledger.delinquentAmount || previewResult.paymentAmount;
+      this.amount = Number(this.suggestedPaymentAmount).toFixed(2);
+
       this.newScheduleItemTransactionId =
         previewResult.preview.newScheduleItemTransactionId;
       this.previewResult = previewResult;
       this.previewResults = previewResult;
     },
-    hidePreviewPayment: async function () {
+    hidePreviewPayment: async function() {
       this.modal = false;
       this.previewPaymentComponent = false;
       this.previewNewScheduleComponent = false;
@@ -508,7 +589,11 @@ export default Vue.extend({
       const { previewResult } = data;
 
       this.previewResult = previewResult;
-      this.amount = Number(previewResult.paymentAmount).toFixed(2);
+
+      this.suggestedPaymentAmount =
+        previewResult.ledger.delinquentAmount || previewResult.paymentAmount;
+      this.amount = Number(this.suggestedPaymentAmount).toFixed(2);
+
       this.newScheduleItemTransactionId =
         previewResult.preview.newScheduleItemTransactionId;
     },
@@ -557,7 +642,7 @@ export default Vue.extend({
       try {
         this.isLoading = true;
         await adminDashboardRequests.submitPayment(this.screenTrackingId, {
-          paymentMethodToken: '',
+          paymentMethodToken: "",
           amount: this.amountToNumber,
           paymentDate: this.parsedPaymentDate,
           paymentVia: this.makePaymentMethodVia,
@@ -568,8 +653,8 @@ export default Vue.extend({
           text: this.isPaymentToday
             ? "Payment successfully submitted."
             : `Payment sucessfully scheduled to ${moment(this.paymentDate)
-              .startOf("day")
-              .format("MM/DD/YYYY")}`,
+                .startOf("day")
+                .format("MM/DD/YYYY")}`,
           icon: "success",
         });
 
@@ -654,8 +739,12 @@ export default Vue.extend({
     const { previewResult } = paymentPreviewData;
 
     this.previewResult = previewResult;
+    this.payoffAmount = paymentPreviewData.payoff;
     this.previewResults = previewResult;
-    this.amount = Number(previewResult.paymentAmount).toFixed(2);
+    this.suggestedPaymentAmount =
+      previewResult.ledger.delinquentAmount ||
+      paymentPreviewData.paymentAmount;
+    this.amount = Number(this.suggestedPaymentAmount).toFixed(2);
     this.newScheduleItemTransactionId =
       previewResult.preview.newScheduleItemTransactionId;
 
@@ -679,7 +768,6 @@ export default Vue.extend({
         (card: any) => card.isDefault
       )._id;
       this.makePaymentMethodVia = this.selectedCard;
-
     }
   },
 });
@@ -762,7 +850,7 @@ th {
   padding: 10px;
 }
 
-tr> :first-child {
+tr > :first-child {
   font-weight: bold;
 }
 

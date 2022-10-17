@@ -67,13 +67,13 @@
             <th>Delinquent Amount</th>
             <td>
               <ul>
-                Unpaid Interest Balance: {{ ledger.unpaidInterestBalance | currency }}
-              </ul>
-              <ul>
-                Cycled Arrcued Interest: {{ ledger.cycleAccruedInterest | currency }}
+                Unpaid Interest Balance: {{ ledger.unpaidInterestBalance + ledger.cycleAccruedInterest | currency }}
               </ul>
               <ul>
                 Unpaid Fees Balance: {{ ledger.accruedFeesBalance | currency }}
+              </ul>
+              <ul>
+                Unpaid Principal Balance: {{ ledger.unpaidPrincipalBalance | currency }}
               </ul>
 
               <ul>

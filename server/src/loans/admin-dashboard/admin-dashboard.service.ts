@@ -899,7 +899,7 @@ export class AdminDashboardService {
     response.screenTracking = screenTracking;
     response.paymentSchedule = response.paymentSchedule.filter(
       (scheduleItem) => {
-        return moment().isAfter(scheduleItem.date);
+        return moment().isSameOrAfter(scheduleItem.date);
       },
     );
 
