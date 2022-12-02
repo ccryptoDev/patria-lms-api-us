@@ -1,6 +1,6 @@
 <template>
   <Layout>
-    <h2 style="font-weight: bold;">Opportunities</h2>
+    <h2 style="font-weight: bold;">Application status</h2>
     <OpportunitiesTable />
   </Layout>
 </template>
