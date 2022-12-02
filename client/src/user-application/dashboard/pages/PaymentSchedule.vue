@@ -70,7 +70,7 @@
             <td>{{ index + 1 }}</td>
             <td>{{ payment.date | date }}</td>
             <td>{{ payment.amount | currency }}</td>
-            <td v-if="payment.status == 'failed'">{{ payment.status }} - {{ payment.transactionMessage }}</td>
+            <td v-if="payment.status == 'failed' || payment.status == 'returned'">{{ payment.status }} - {{ payment.transactionMessage }}</td>
             <td v-if="payment.status == 'paid'">{{ payment.status }}</td>
             <td>{{ payment.paymentType }}</td>
             <!--<td>{{ payment.startPrincipal | currency }}</td> -->
