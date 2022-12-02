@@ -386,7 +386,7 @@
             <td>{{ payment.amount | currency }}</td>
             <!-- <td>{{ payment.startPrincipal | currency }}</td> -->
             <td>{{ payment.paymentReference || '--'}} </td>
-            <td v-if="payment.status == 'failed'">
+            <td v-if="payment.status == 'failed' || payment.status == 'returned'">
               {{ payment.status }} - {{ payment.transactionMessage }}
             </td>
             <td v-if="payment.isRefund == true">Refunded</td>
