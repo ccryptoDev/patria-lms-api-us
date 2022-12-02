@@ -71,7 +71,7 @@ const routes: Array<RouteConfig> = [
   },
   {
     path: "/admin/opportunities",
-    name: "Opportunities",
+    name: "Application status",
     component: Opportunities,
     meta: { authorize: adminRoles },
   },
