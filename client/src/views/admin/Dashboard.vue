@@ -31,9 +31,11 @@ export default Vue.extend({
     return {
       countByStatus: [] as [string, unknown][],
       nameForStatus: {
-        opportunities: "Opportunities - Approved, Pending",
+        opportunities: "Application status - Approved, Pending",
         denied: "Denied Applications",
         expired: "Expired Applications",
+        readyToFund: "Ready to Fund Applications",
+        authPending: "Authentication Pending",
         delinquent: "Delinquent Accounts",
         inRepayment: "Loan In Repayment",
       },
@@ -41,6 +43,8 @@ export default Vue.extend({
         opportunities: "/admin/opportunities",
         denied: "/admin/opportunities",
         expired: "/admin/opportunities",
+        readyToFund: "/admin/opportunities",
+        authPending: "/admin/opportunities",
         delinquent: "/admin/needs-review",
         inRepayment: "/admin/lending-center",
       },
@@ -53,7 +57,15 @@ export default Vue.extend({
       const totalsObj = data;
 
       this.countByStatus = Object.entries(totalsObj).filter(([status]) =>
-        ["opportunities", "denied", "expired", "delinquent", "inRepayment"].includes(status)
+        [
+          "opportunities",
+          "denied",
+          "expired",
+          "readyToFund",
+          "authPending",
+          "delinquent",
+          "inRepayment",
+        ].includes(status)
       );
     } catch (error) {
       const errorMessage = await errorHandler(error, this.$router);
