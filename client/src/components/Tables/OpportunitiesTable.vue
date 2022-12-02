@@ -24,7 +24,17 @@
       title="Pending Applications"
       :rows="rows"
     />
-    <DeniedTemplate
+    <IncompleteTemplate
+      v-if="currentStatus === 'readyToFund'"
+      title="Ready to Fund Applications"
+      :rows="rows"
+    />
+    <IncompleteTemplate
+      v-if="currentStatus === 'authPending'"
+      title="Ready to Fund Applications"
+      :rows="rows"
+    />
+    <IncompleteTemplate
       v-if="currentStatus === 'denied'"
       title="Denied Applications"
       :rows="rows"
@@ -56,7 +66,6 @@ export default Vue.extend({
   components: {
     BaseTableSection,
     IncompleteTemplate,
-    DeniedTemplate,
   },
   name: "OpportunitiesTable",
   data() {
@@ -72,11 +81,19 @@ export default Vue.extend({
         },
         {
           status: "approved",
-          text: "Approved",
+          text: "Conditionally Approved",
         },
         {
           status: "pending",
           text: "Pending",
+        },
+        {
+          status: "readyToFund",
+          text: "Ready to Fund",
+        },
+        {
+          status: "authPending",
+          text: "Authentication Pending",
         },
         {
           status: "denied",
