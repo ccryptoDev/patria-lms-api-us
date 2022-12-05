@@ -82,7 +82,7 @@ export class AdminDashboardController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   async getApplications(
     @Query('status')
-    status: PaymentManagement['status'],
+    status: PaymentManagement['status'] | 'readyToFund',
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('perPage', new DefaultValuePipe(50), ParseIntPipe) perPage: number,
     @Query('search', new DefaultValuePipe('')) search: string,
@@ -90,15 +90,14 @@ export class AdminDashboardController {
     @Req() request: Request & { user: AdminJwtPayload },
   ) {
     try {
-      const applications =
-        await this.adminDashboardService.getApplicationByStatus(
-          status,
-          page,
-          perPage,
-          search,
-          request.id,
-          type,
-        );
+      const applications = await this.adminDashboardService.getApplicationByStatus(
+        status,
+        page,
+        perPage,
+        search,
+        request.id,
+        type,
+      );
 
       this.logger.log(
         'Response status 200',
@@ -546,11 +545,13 @@ export class AdminDashboardController {
     @Req() request: Request & { user: AdminJwtPayload },
   ) {
     try {
-      const { response, ledger } =
-        await this.adminDashboardService.getPaymentSchedule(
-          screenTrackingId,
-          request.id,
-        );
+      const {
+        response,
+        ledger,
+      } = await this.adminDashboardService.getPaymentSchedule(
+        screenTrackingId,
+        request.id,
+      );
 
       const { id, userName, email, role, practiceManagement } = request.user;
       await this.logActivityService.createLogActivity(
@@ -601,8 +602,9 @@ export class AdminDashboardController {
       body,
     );
 
-    const response: any =
-      await this.userBankAccountService.createUserBankAccount(payload);
+    const response: any = await this.userBankAccountService.createUserBankAccount(
+      payload,
+    );
 
     const { id, userName, email, role, practiceManagement } = request.user;
 
@@ -1293,8 +1295,7 @@ export class AdminDashboardController {
     @Req() request: Request & { user: AdminJwtPayload },
   ) {
     try {
-      const originalLoanSettings =
-        await this.loanSettingsService.getLoanSettings();
+      const originalLoanSettings = await this.loanSettingsService.getLoanSettings();
       await this.loanSettingsService.updateLateFee(loanSettingsDto.lateFee);
       if (loanSettingsDto.nsfFee) {
         await this.loanSettingsService.updateNSFFee(loanSettingsDto.nsfFee);
@@ -1316,10 +1317,9 @@ export class AdminDashboardController {
       }
       if (loanSettingsDto.delinquencyPeriod) {
       }
-      const loanSettings =
-        await this.loanSettingsService.updateDelinquencyPeriod(
-          loanSettingsDto.delinquencyPeriod || 0,
-        );
+      const loanSettings = await this.loanSettingsService.updateDelinquencyPeriod(
+        loanSettingsDto.delinquencyPeriod || 0,
+      );
 
       // if (loanSettings == null) {
       //   loanSettings = await this.loanSettingsService.updateSettingsData(
@@ -1681,11 +1681,10 @@ export class AdminDashboardController {
     @Req() request: Request & { user: AdminJwtPayload },
   ) {
     try {
-      const newPaymentSchedule =
-        await this.adminDashboardService.reRunAmortization(
-          screenTrackingId,
-          request.id,
-        );
+      const newPaymentSchedule = await this.adminDashboardService.reRunAmortization(
+        screenTrackingId,
+        request.id,
+      );
       this.logger.log(
         'Response:',
         `${AdminDashboardController.name}#reRunAmortization::response`,
