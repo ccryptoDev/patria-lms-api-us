@@ -31,7 +31,6 @@ import { UserBankAccountService } from '../../../user/user-bank-account/user-ban
 export class LoanpaymentproController {
   constructor(
     @InjectModel(ScreenTracking.name)
-    private readonly screenTrackingModel: Model<ScreenTrackingDocument>,
     private readonly screenTrackingService: ScreenTrackingService,
     private readonly loanPaymentProService: LoanpaymentproService,
     private readonly logger: LoggerService,
@@ -41,7 +40,7 @@ export class LoanpaymentproController {
   @Post('application/addCard')
   @UsePipes(new ValidationPipe())
   async addCard(@Body() addCardDto: AddCardDto, @Req() request: Request) {
-    const sc = request?.body?.screenTrackingId;
+    const user = request?.user?.id;
     try {
       addCardDto.billingZip = addCardDto.billingZip.slice(0, 5);
       // eslint-disable-next-line prefer-const
