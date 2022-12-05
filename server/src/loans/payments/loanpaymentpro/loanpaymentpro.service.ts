@@ -271,6 +271,7 @@ export class LoanpaymentproService {
       nameOnCard: nameOnCard || `${user.firstName} ${user.lastName}`,
       cardNumberLastFour: addCardDto.cardNumber,
       cardNumber: cardNumber,
+      isDefault: true,
       // customerToken: data.yourReferenceNumber,
       // paymentMethodToken: data.tokenId,
       user: user._id,
@@ -373,6 +374,7 @@ export class LoanpaymentproService {
       customerToken: data.yourReferenceNumber,
       paymentMethodToken: data.tokenId,
       user: user._id,
+      isDefault: true,
     });
     // const achData = {
     //   user: user,
@@ -633,9 +635,22 @@ export class LoanpaymentproService {
 
     const response = cards.map((card) => {
       const { paymentType, expMonth, expYear } = card;
+
+      let cardNumberLastFour = card.cardNumberLastFour;
+      cardNumberLastFour =
+        cardNumberLastFour &&
+        `**** **** ${String(cardNumberLastFour).substring(
+          cardNumberLastFour.length - 4,
+        )}`;
+
+      let routingNumber = card.routingNumber;
+      routingNumber =
+        routingNumber &&
+        `***** ${String(routingNumber).substring(routingNumber.length - 4)}`;
+
       return {
         paymentMethodToken: card.paymentMethodToken,
-        cardNumberLastFour: card.cardNumberLastFour,
+        cardNumberLastFour: cardNumberLastFour,
         updatedAt: card.updatedAt,
         firstName: card.billingFirstName,
         lastName: card.billingLastName,
@@ -644,7 +659,7 @@ export class LoanpaymentproService {
           paymentType === PaymentType.CARD ? `${expMonth}/${expYear}` : 'N/A',
         isDefault: card.isDefault,
         paymentType: card.paymentType,
-        routingNumber: card.routingNumber,
+        routingNumber: routingNumber,
         financialInstitution: card?.financialInstitution,
         accountType: card?.accountType,
         accountNumber: card.accountNumber,
@@ -707,7 +722,7 @@ export class LoanpaymentproService {
         // $set: {
         isDefault: false,
         // },
-      }
+      },
     );
 
     //set Default Card
