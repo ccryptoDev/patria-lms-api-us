@@ -423,58 +423,16 @@ export class FlexPayService {
     return data;
   }
 
-  async getAchTransactionStatus(
+  async getReturnedACHPayments(
     requestId: string,
     dateRange = 15,
   ): Promise<FlexTransactionReportDocument[]> {
     try {
-      const processedPayments = await this.flexPayTransaction.find(
-        {
-          status: {
-            $in: [TransactionStatus.APPROVED, TransactionStatus.FAILED],
-          },
-          'transaction.achTransactionCode': AchTransactionCode.DEBIT,
-          createdAt: {
-            $gte: new Date(moment().subtract(dateRange, 'days').toISOString()),
-          },
-        },
-        { paymentRef: 1 },
-      );
-
-      const achData = (await this.flexPayTransaction.aggregate([
-        {
-          $match: {
-            paymentType: PaymentType.ACH,
-            paymentRef: {
-              $nin: processedPayments.map((x) => x.paymentRef),
-            },
-            status: {
-              $in: [TransactionStatus.PENDING, TransactionStatus.SETTLED],
-            },
-            'transaction.achTransactionCode': AchTransactionCode.DEBIT,
-            createdAt: {
-              $gte: new Date(
-                moment().subtract(dateRange, 'days').toISOString(),
-              ),
-            },
-          },
-        },
-        {
-          $sort: {
-            createdAt: -1,
-          },
-        },
-      ])) as FlexTransactionReportDocument[];
-
-      if (achData.length === 0) {
-        return achData;
-      }
-
       const accessTokenResult = await this.getAccessToken();
 
       this.logger.log(
         'Access Token',
-        `${FlexPayService.name}#getAchTransactionStatus::accessTokenResult`,
+        `${FlexPayService.name}#getReturnedACHPayments::accessTokenResult`,
         requestId,
         accessTokenResult,
       );
@@ -485,82 +443,187 @@ export class FlexPayService {
       const { access_token } = accessTokenResult.data;
 
       const AchStatusUrl = this.configService.get<any>('FLEX_GET_ACH_STATUS');
+      const endDate = moment().startOf('day').format('MM/DD/YYYY');
+      const startDate = moment()
+        .startOf('day')
+        .subtract(dateRange, 'days')
+        .format('MM/DD/YYYY');
 
+      const options: AxiosRequestConfig = {
+        method: 'GET',
+        url: `${AchStatusUrl}?ItemStatus=R&ReturnDateStart=${startDate}&ReturnDateEnd=${endDate}&PageSize=100`,
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${access_token}`,
+        },
+      };
+
+      this.logger.log(
+        'FlexPay Get ACH Status Request',
+        `${FlexPayService.name}#getReturnedACHPayments::options`,
+        requestId,
+        options,
+      );
+
+      const { status, data } = await axios(options);
+
+      this.logger.log(
+        'FlexPay Get ACH Status Response',
+        `${FlexPayService.name}#getReturnedACHPayments::response`,
+        requestId,
+        { status, data },
+      );
+
+      const { transactions } = data;
       const updatedTransactions = [] as FlexTransactionReportDocument[];
 
-      for (const achTransaction of achData) {
-        const options: AxiosRequestConfig = {
-          method: 'GET',
-          url: `${AchStatusUrl}?AchItemId=${achTransaction.transaction?.achItemId}`,
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${access_token}`,
+      for (const transaction of transactions) {
+        const failedTransaction = (await this.flexPayTransaction.findOne({
+          status: TransactionStatus.FAILED,
+          'transaction.achItemId': transaction.achItemId,
+        })) as FlexTransactionReportDocument;
+
+        if (failedTransaction) continue;
+
+        const achTransaction = (await this.flexPayTransaction.findOne({
+          'transaction.achItemId': transaction.achItemId,
+        })) as FlexTransactionReportDocument;
+
+        this.logger.log(
+          'Found ACH Transaction',
+          `${FlexPayService.name}#getReturnedACHPayments::achTransaction`,
+          requestId,
+          achTransaction,
+        );
+
+        if (!achTransaction) continue;
+
+        const commitDataContext: FlexTransactionCommit = {
+          userData: {
+            userId: achTransaction.user,
+            screenTrackingId: achTransaction.screenTracking,
+            paymentType: 'ACH',
+            paymentRef: achTransaction.paymentRef,
           },
+          transaction,
         };
 
-        this.logger.log(
-          'FlexPay Get ACH Status Request',
-          `${FlexPayService.name}#getAchTransactionStatus::options`,
-          requestId,
-          options,
+        const commitResponse = await this.commitTransactionData(
+          commitDataContext,
         );
 
-        const { status, data } = await axios(options);
-
         this.logger.log(
-          'FlexPay Get ACH Status Response',
-          `${FlexPayService.name}#getAchTransactionStatus::response`,
+          'Stored ACH Transaction',
+          `${FlexPayService.name}#getReturnedACHPayments::commitResponse`,
           requestId,
-          { status, data },
+          commitResponse,
         );
 
-        if (status !== 200 && status !== 201) {
-          continue;
-        }
+        updatedTransactions.push(commitResponse);
+      }
+      return updatedTransactions;
+    } catch (error) {
+      this.logger.error('ERROR::CRON:getReturnedACHPayments:', error);
+      return error;
+    }
+  }
 
-        const { transactions } = data;
-        if (!transactions || transactions?.length === 0) {
-          throw new HttpException('Transaction Not Found', 404);
-        }
+  async getSettledPayments(
+    requestId: string,
+    dateRange = 15,
+  ): Promise<FlexTransactionReportDocument[]> {
+    try {
+      const accessTokenResult = await this.getAccessToken();
 
-        if (
-          transactions[0].itemStatus !== achTransaction.transaction.itemStatus
-        ) {
-          const commitDataContext: FlexTransactionCommit = {
-            userData: {
-              userId: achTransaction.user,
-              screenTrackingId: achTransaction.screenTracking,
-              paymentType: 'ACH',
-              paymentRef: achTransaction.paymentRef,
-            },
-            transaction: transactions[0],
-          };
+      this.logger.log(
+        'Access Token',
+        `${FlexPayService.name}#getSettledPayments::accessTokenResult`,
+        requestId,
+        accessTokenResult,
+      );
 
-          const commitResponse = await this.commitTransactionData(
-            commitDataContext,
-          );
+      if (!accessTokenResult.ok) {
+        throw new HttpException('Authentication Failed', 400);
+      }
+      const { access_token } = accessTokenResult.data;
 
-          this.logger.log(
-            'Stored ACH Transaction',
-            `${FlexPayService.name}#getAchTransactionStatus::commitResponse`,
-            requestId,
-            commitResponse,
-          );
+      const AchStatusUrl = this.configService.get<any>('FLEX_GET_ACH_STATUS');
+      const endDate = moment().startOf('day').format('MM/DD/YYYY');
+      const startDate = moment()
+        .startOf('day')
+        .subtract(dateRange, 'days')
+        .format('MM/DD/YYYY');
 
-          updatedTransactions.push(commitResponse);
-        } else {
-          const updatedTransaction = await this.updateTransactionContext(
-            { _id: achTransaction._id },
-            { lastCheck: new Date() },
-          );
-          updatedTransactions.push(updatedTransaction);
-        }
+      const options: AxiosRequestConfig = {
+        method: 'GET',
+        url: `${AchStatusUrl}?ItemStatus=S&ReturnDateStart=${startDate}&ReturnDateEnd=${endDate}&PageSize=100`,
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${access_token}`,
+        },
+      };
+
+      this.logger.log(
+        'FlexPay Get ACH Status Request',
+        `${FlexPayService.name}#getSettledPayments::options`,
+        requestId,
+        options,
+      );
+
+      const { status, data } = await axios(options);
+
+      this.logger.log(
+        'FlexPay Get ACH Status Response',
+        `${FlexPayService.name}#getSettledPayments::response`,
+        requestId,
+        { status, data },
+      );
+
+      const { transactions } = data;
+      const updatedTransactions = [] as FlexTransactionReportDocument[];
+
+      for (const transaction of transactions) {
+        const settledTransaction = (await this.flexPayTransaction.findOne({
+          status: TransactionStatus.SETTLED,
+          'transaction.achItemId': transaction.achItemId,
+        })) as FlexTransactionReportDocument;
+
+        if (settledTransaction) continue;
+
+        const achTransaction = (await this.flexPayTransaction.findOne({
+          status: TransactionStatus.PENDING,
+          'transaction.achItemId': transaction.achItemId,
+        })) as FlexTransactionReportDocument;
+
+        const commitDataContext: FlexTransactionCommit = {
+          userData: {
+            userId: achTransaction.user,
+            screenTrackingId: achTransaction.screenTracking,
+            paymentType: 'ACH',
+            paymentRef: achTransaction.paymentRef,
+          },
+          transaction,
+        };
+
+        const commitResponse = await this.commitTransactionData(
+          commitDataContext,
+        );
+
+        this.logger.log(
+          'Stored ACH Transaction',
+          `${FlexPayService.name}#getSettledPayments::commitResponse`,
+          requestId,
+          commitResponse,
+        );
+
+        updatedTransactions.push(commitResponse);
       }
 
       return updatedTransactions;
     } catch (error) {
-      this.logger.error('ERROR::CRON:getAchTransactionStatus:', error);
+      this.logger.error('ERROR::CRON:getSettledPayments:', error);
       return error;
     }
   }
