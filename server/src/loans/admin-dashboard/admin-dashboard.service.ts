@@ -53,6 +53,7 @@ import { Role } from '../../../src/user/auth/roles/role.enum';
 import { CollectionName } from '../../../src/user/admin/approvals/approval.dto';
 import { AdminApprovalService } from '../../../src/user/admin/approvals/approval.service';
 
+type CustomStatus = 'readyToFund' | 'authPending';
 @Injectable()
 export class AdminDashboardService {
   constructor(
@@ -84,7 +85,7 @@ export class AdminDashboardService {
   ) {}
 
   async getApplicationByStatus(
-    status: PaymentManagement['status'],
+    status: PaymentManagement['status'] | CustomStatus,
     page: number,
     perPage: number,
     search: string,
@@ -104,13 +105,42 @@ export class AdminDashboardService {
       screenTracking: { $exists: true },
     };
 
-    if (status === 'denied') {
+    if (status === 'readyToFund') {
+      Object.assign(matchCriteria, {
+        status: 'pending',
+        'screenTracking.lastlevel': { $in: [5, 6] },
+      });
+    }
+
+    if (status === 'authPending') {
+      Object.assign(matchCriteria, {
+        status: 'pending',
+        $or: [
+          {
+            'screenTracking.kbaRequested': true,
+            'screenTracking.kbaApproved': false,
+          },
+          {
+            'screenTracking.otpRequested': true,
+            'screenTracking.otpApproved': false,
+          },
+        ],
+      });
+    }
+
+    if (status === 'approved') {
       delete matchCriteria.status;
       Object.assign(matchCriteria, {
-        $or: [
-          { status: 'denied' },
-          { 'screenTracking.underwritingDecision.status': 'failed' },
-        ],
+        status: 'pending',
+        'screenTracking.lastlevel': { $in: [3, 4] },
+      });
+    }
+
+    if (status === 'pending') {
+      delete matchCriteria.status;
+      Object.assign(matchCriteria, {
+        status: 'pending',
+        'screenTracking.lastlevel': { $in: [1, 2, 3, 4, 7] },
       });
     }
 
@@ -118,7 +148,9 @@ export class AdminDashboardService {
       const mappedDataFields: {
         data: string;
         dataType: 'string' | 'currency';
-      }[] = this.processApplicationByStatusDataFields(status);
+      }[] = this.processApplicationByStatusDataFields(
+        status as PaymentManagement['status'],
+      );
       matchCriteria = this.databaseSearchService.processFiltering(
         matchCriteria,
         search,
@@ -150,10 +182,11 @@ export class AdminDashboardService {
             screenTracking?.offerData?.loanAmount +
             paidPrincipal;
         }
-        const paymentManagementDoc: PaymentManagementDocument =
-          await this.PaymentManagementModel.findOne({
+        const paymentManagementDoc: PaymentManagementDocument = await this.PaymentManagementModel.findOne(
+          {
             _id: paymentManagement._id,
-          });
+          },
+        );
         const ledger = this.ledgerService.getPaymentLedger(
           paymentManagementDoc,
           moment().startOf('day').toDate(),
@@ -253,12 +286,11 @@ export class AdminDashboardService {
         });
         result.items[numberV];
 
-        const paymentScheduleItems: IPaymentScheduleItem[] =
-          paymentManagement1.paymentSchedule.filter(
-            (scheduleItem) =>
-              moment(scheduleItem.date).startOf('day').isBefore(today) &&
-              scheduleItem.status === 'opened',
-          );
+        const paymentScheduleItems: IPaymentScheduleItem[] = paymentManagement1.paymentSchedule.filter(
+          (scheduleItem) =>
+            moment(scheduleItem.date).startOf('day').isBefore(today) &&
+            scheduleItem.status === 'opened',
+        );
         if (!paymentScheduleItems || paymentScheduleItems.length <= 0) {
         } else {
           const furthestLatePayment = paymentScheduleItems[0];
@@ -450,7 +482,7 @@ export class AdminDashboardService {
         {
           status:
             status === 'approved' ? LOAN_STATUS.PENDING : LOAN_STATUS.DENIED,
-        }
+        },
       );
 
       if (paymentData?.nModified === 0) {
@@ -483,34 +515,55 @@ export class AdminDashboardService {
       requestId,
     );
 
-    const countDeniedApplicationsAggregationPipeline = [
-      {
-        $lookup: {
-          from: 'screentracking',
-          localField: 'screenTracking',
-          foreignField: '_id',
-          as: 'screenTracking',
+    const getCountAggregationPipeline = (condition) => {
+      return [
+        {
+          $lookup: {
+            from: 'screentracking',
+            localField: 'screenTracking',
+            foreignField: '_id',
+            as: 'screenTracking',
+          },
         },
-      },
-      { $unwind: '$screenTracking' },
-      {
-        $match: {
-          $or: [
-            { status: 'denied' },
-            { 'screenTracking.underwritingDecision.status': 'failed' },
-          ],
+        { $unwind: '$screenTracking' },
+        {
+          $match: condition,
         },
-      },
-      { $count: 'count' },
-    ];
+        { $count: 'count' },
+      ];
+    };
+
+    const handleAggregationCount = ([result]) => result?.count || 0;
+
+    const countReadyToFundApplications = getCountAggregationPipeline({
+      status: 'pending',
+      'screenTracking.lastlevel': { $in: [5, 6] },
+    });
+
+    const countAuthPendingApplications = getCountAggregationPipeline({
+      status: 'pending',
+      $or: [
+        {
+          'screenTracking.kbaRequested': true,
+          'screenTracking.kbaApproved': false,
+        },
+        {
+          'screenTracking.otpRequested': true,
+          'screenTracking.otpApproved': false,
+        },
+      ],
+    });
+
+    const countPendingOrApprovedApplications = getCountAggregationPipeline({
+      status: 'pending',
+      'screenTracking.lastlevel': { $in: [1, 2, 3, 4, 7] },
+    });
 
     const result = await Promise.all([
-      this.PaymentManagementModel.find({
-        status: { $in: ['approved', 'pending'] },
-      }).countDocuments(),
       this.PaymentManagementModel.aggregate(
-        countDeniedApplicationsAggregationPipeline,
-      ).then(([{ count }]) => count),
+        countPendingOrApprovedApplications,
+      ).then(handleAggregationCount),
+      this.PaymentManagementModel.find({ status: 'denied' }).count(),
       this.PaymentManagementModel.find({
         status: { $in: ['expired'] },
       }).countDocuments(),
@@ -529,6 +582,12 @@ export class AdminDashboardService {
           $in: ['in-repayment', 'in-repayment prime', 'in-repayment non-prime'],
         },
       }).countDocuments(),
+      this.PaymentManagementModel.aggregate(countReadyToFundApplications).then(
+        handleAggregationCount,
+      ),
+      this.PaymentManagementModel.aggregate(countAuthPendingApplications).then(
+        handleAggregationCount,
+      ),
     ]);
 
     let expiredCount = 0;
@@ -537,8 +596,9 @@ export class AdminDashboardService {
     //   ? 0
     //   : paymentmanagementData[0].expired.length;
 
-    const paymentManagements: PaymentManagementDocument[] =
-      await this.PaymentManagementModel.find({});
+    const paymentManagements: PaymentManagementDocument[] = await this.PaymentManagementModel.find(
+      {},
+    );
     for (const paymentManagement of paymentManagements) {
       if (
         paymentManagement.status == 'expired' ||
@@ -574,6 +634,8 @@ export class AdminDashboardService {
       expired: expiredCount,
       delinquent: delinquentCount, //result[3],
       inRepayment: result[4],
+      readyToFund: result[5],
+      authPending: result[6],
     };
 
     return response;
@@ -618,14 +680,16 @@ export class AdminDashboardService {
     }
 
     const user: UserDocument = screenTrackingDocument.user as UserDocument;
-    const PracticeManagementDocument: PaymentManagement =
-      await this.PaymentManagementModel.findOne({
+    const PracticeManagementDocument: PaymentManagement = await this.PaymentManagementModel.findOne(
+      {
         user: user._id,
-      });
+      },
+    );
 
     let ricSignature: string | undefined;
-    const esignature: EsignatureDocument | null =
-      await this.esignatureModel.findOne({ user });
+    const esignature: EsignatureDocument | null = await this.esignatureModel.findOne(
+      { user },
+    );
     if (esignature) {
       const signature = await this.s3Service.downloadFile(
         esignature.signaturePath,
@@ -636,10 +700,11 @@ export class AdminDashboardService {
       };base64,${signature.Body.toString('base64')}`;
     }
 
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.PaymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+      {
         screenTracking: screenTrackingId,
-      });
+      },
+    );
 
     let collectionAdmin = 'Unassigned';
     let collectionEmail = '';
@@ -861,12 +926,14 @@ export class AdminDashboardService {
   }
 
   async getPaymentSchedule(screenTrackingId: string, requestId: string) {
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.PaymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+      {
         screenTracking: screenTrackingId,
-      });
-    const screenTracking: ScreenTrackingDocument | null =
-      await this.ScreenTrackingModel.findById(screenTrackingId);
+      },
+    );
+    const screenTracking: ScreenTrackingDocument | null = await this.ScreenTrackingModel.findById(
+      screenTrackingId,
+    );
     if (!paymentManagement) {
       this.logger.log(
         'Payment schedule not found',
@@ -960,10 +1027,11 @@ export class AdminDashboardService {
     requestId: string,
   ) {
     const { screenTracking, amount } = changePaymentAmountDto;
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.PaymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+      {
         screenTracking,
-      });
+      },
+    );
     if (!paymentManagement) {
       this.logger.log(
         'Payment schedule not found',
@@ -1017,10 +1085,11 @@ export class AdminDashboardService {
   }
 
   async reRunAmortization(screenTrackingId: string, requestId: string) {
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.PaymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+      {
         screenTracking: screenTrackingId,
-      });
+      },
+    );
 
     const today: Date = moment().startOf('day').toDate();
     const loanSettings = await this.loanSettingsService.getLoanSettings();
@@ -1051,10 +1120,11 @@ export class AdminDashboardService {
     requestId: string,
   ) {
     const { screenTracking, amount } = changePaymentAmountDto;
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.PaymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+      {
         screenTracking,
-      });
+      },
+    );
     if (!paymentManagement) {
       this.logger.log(
         'Payment schedule not found',
@@ -1107,10 +1177,11 @@ export class AdminDashboardService {
   }
 
   async forgiveNsffee(screenTrackingId: string, requestId: string) {
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.PaymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+      {
         screenTracking: screenTrackingId,
-      });
+      },
+    );
 
     if (!paymentManagement) {
       this.logger.log(
@@ -1132,8 +1203,9 @@ export class AdminDashboardService {
         scheduleItem.nsfFee = 0;
       }
     });
-    const PaymentManagement: PaymentManagementDocument =
-      new this.PaymentManagementModel(paymentManagement);
+    const PaymentManagement: PaymentManagementDocument = new this.PaymentManagementModel(
+      paymentManagement,
+    );
     await PaymentManagement.save();
     return PaymentManagement;
   }
@@ -1143,10 +1215,11 @@ export class AdminDashboardService {
     requestId: string,
     transactionId: string,
   ) {
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.PaymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+      {
         screenTracking: screenTrackingId,
-      });
+      },
+    );
 
     if (!paymentManagement) {
       this.logger.log(
@@ -1171,8 +1244,9 @@ export class AdminDashboardService {
       }
     });
 
-    const PaymentManagement: PaymentManagementDocument =
-      new this.PaymentManagementModel(paymentManagement);
+    const PaymentManagement: PaymentManagementDocument = new this.PaymentManagementModel(
+      paymentManagement,
+    );
     await PaymentManagement.save();
     return PaymentManagement;
   }
@@ -1361,10 +1435,11 @@ export class AdminDashboardService {
   // }
 
   async forgivePayment(screenTrackingId: string, requestId: string) {
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.PaymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+      {
         screenTracking: screenTrackingId,
-      });
+      },
+    );
     if (!paymentManagement) {
       this.logger.log(
         'Payment schedule not found',
@@ -1404,17 +1479,19 @@ export class AdminDashboardService {
         scheduleItem.transId = '';
       }
     });
-    const PaymentManagement: PaymentManagementDocument =
-      new this.PaymentManagementModel(paymentManagement);
+    const PaymentManagement: PaymentManagementDocument = new this.PaymentManagementModel(
+      paymentManagement,
+    );
     await PaymentManagement.save();
     return paymentManagement;
   }
 
   async forgiveLatefee(screenTrackingId: string, requestId: string) {
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.PaymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+      {
         screenTracking: screenTrackingId,
-      });
+      },
+    );
     if (!paymentManagement) {
       this.logger.log(
         'Payment schedule not found',
@@ -1435,8 +1512,9 @@ export class AdminDashboardService {
         scheduleItem.fees = 0;
       }
     });
-    const PaymentManagement: PaymentManagementDocument =
-      new this.PaymentManagementModel(paymentManagement);
+    const PaymentManagement: PaymentManagementDocument = new this.PaymentManagementModel(
+      paymentManagement,
+    );
     await PaymentManagement.save();
     return PaymentManagement;
   }
@@ -1446,10 +1524,11 @@ export class AdminDashboardService {
     requestId: string,
     transactionId: string,
   ) {
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.PaymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+      {
         screenTracking: screenTrackingId,
-      });
+      },
+    );
 
     if (!paymentManagement) {
       this.logger.log(
@@ -1474,17 +1553,19 @@ export class AdminDashboardService {
       }
     });
 
-    const PaymentManagement: PaymentManagementDocument =
-      new this.PaymentManagementModel(paymentManagement);
+    const PaymentManagement: PaymentManagementDocument = new this.PaymentManagementModel(
+      paymentManagement,
+    );
     await PaymentManagement.save();
     return PaymentManagement;
   }
 
   async deferPayment(screenTrackingId: string, requestId: string) {
-    const paymentManagement: PaymentManagementDocument | null =
-      await this.PaymentManagementModel.findOne({
+    const paymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+      {
         screenTracking: screenTrackingId,
-      });
+      },
+    );
     if (!paymentManagement) {
       this.logger.log(
         'Payment schedule not found',
@@ -1500,10 +1581,9 @@ export class AdminDashboardService {
       );
     }
 
-    const paymentScheduleItems: IPaymentScheduleItem[] =
-      paymentManagement.paymentSchedule.filter(
-        (scheduleItem) => scheduleItem.status === 'opened',
-      );
+    const paymentScheduleItems: IPaymentScheduleItem[] = paymentManagement.paymentSchedule.filter(
+      (scheduleItem) => scheduleItem.status === 'opened',
+    );
     paymentScheduleItems.forEach(
       (scheduleItem, index, paymentScheduleItems) => {
         if (index + 1 < paymentScheduleItems.length) {
