@@ -71,9 +71,8 @@ const connectScreen = async () => {
       const paymentManagement = await paymentmanagementModel.findOne({
         screenTracking: payment.screenTracking,
       });
-      const {
-        paymentSchedule,
-      } = paymentManagement as PaymentManagementDocument;
+      const { paymentSchedule } =
+        paymentManagement as PaymentManagementDocument;
 
       const paymentScheduleItem = paymentSchedule.find((pm) => {
         const daysDiff = moment(pm.date).diff(
