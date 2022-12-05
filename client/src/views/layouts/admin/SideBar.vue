@@ -13,7 +13,7 @@
       <li>
         <router-link active-class="selected" class="side-nav-link" to="/admin/opportunities">
           <i class="material-icons">article</i>
-          <span>Opportunities</span>
+          <span>Application status</span>
         </router-link>
       </li>
       <li>
