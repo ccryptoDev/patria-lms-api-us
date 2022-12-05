@@ -62,6 +62,8 @@ import { TransUnionsSchema } from '../underwriting/transunion/schemas/transunion
 import { promiseToPayItem } from './payment-management/promise-to-pay-item.interface';
 import { CarmelService } from './carmel/carmel.service';
 import { PaymentManagementService } from './payment-management/payment-management.service';
+import { LoanSettingsService } from '../loan-settings/loan-settings.service';
+
 @Injectable()
 export class PaymentService {
   constructor(
@@ -90,6 +92,7 @@ export class PaymentService {
     private readonly loanPaymentProCardTokenModel: Model<LoanPaymentProCardTokenDocument>,
     private readonly logActivityService: LogActivityService,
     private readonly paymentManagementService: PaymentManagementService,
+    private readonly loanSettingsService: LoanSettingsService,
   ) {}
 
   async refundPaymentData(request: any, token: string) {
@@ -2446,6 +2449,7 @@ export class PaymentService {
         paidPrincipal: 0,
         endPrincipal: currentPayment.startPrincipal,
         status: 'failed',
+        transactionMessage: returnReason,
       }) as IPaymentScheduleItem;
 
       const returnedPayment = Object.create({
@@ -2455,6 +2459,12 @@ export class PaymentService {
         paidPrincipal: 0,
         endPrincipal: currentPayment.startPrincipal,
       }) as IPaymentScheduleItem;
+
+      if (!returnedPayment.nsfFeeApplied) {
+        const loanSettings = await this.loanSettingsService.getLoanSettings();
+        returnedPayment.nsfFee += loanSettings.nsfFee;
+        returnedPayment.nsfFeeApplied = true;
+      }
 
       newPaymentSchedule.splice(paymentIndex, 1, failedPayment);
       newPaymentSchedule.push(returnedPayment);
