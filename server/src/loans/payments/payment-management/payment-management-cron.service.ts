@@ -9,9 +9,16 @@ import {
   PaymentManagement,
   PaymentManagementDocument,
 } from './payment-management.schema';
-import { IPaymentScheduleItem } from './payment-schedule-item.interface';
+import {
+  COMMUNICATION_CODE,
+  IPaymentScheduleItem,
+  UNDERWRITING_RULES,
+} from './payment-schedule-item.interface';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { ScreenTrackingDocument } from 'src/user/screen-tracking/screen-tracking.schema';
+import {
+  ScreenTracking,
+  ScreenTrackingDocument,
+} from '../../../user/screen-tracking/screen-tracking.schema';
 import { PaymentService } from '../../payments/payment.service';
 import { MandrillService } from '../../../mandrill/mandrill.service';
 import { NunjucksCompilerService } from '../../../nunjucks-compiler/nunjucks-compiler.service';
@@ -24,6 +31,8 @@ import {
   FlexTransactionReport,
   TransactionStatus,
 } from '../flex-pay/flex.schema';
+import axios, { Axios } from 'axios';
+import config from '../../../app.config';
 
 @Injectable()
 export class PaymentManagementCronService {
@@ -39,9 +48,11 @@ export class PaymentManagementCronService {
     private readonly flexPayService: FlexPayService,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    @InjectModel(ScreenTracking.name)
+    private readonly screenTrackingModel: Model<ScreenTrackingDocument>,
     @InjectModel(Admin.name) private readonly adminModel: Model<AdminDocument>,
     @InjectModel(Roles.name) private readonly rolesModel: Model<RolesDocument>,
-  ) {}
+  ) { }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async checkPromoAvailability() {
@@ -50,8 +61,9 @@ export class PaymentManagementCronService {
       `${PaymentManagementCronService.name}#checkPromoAvailability`,
     );
     try {
-      const paymentManagements: PaymentManagementDocument[] =
-        await this.PaymentManagementModel.find({ promoStatus: 'available' });
+      const paymentManagements: PaymentManagementDocument[] = await this.PaymentManagementModel.find(
+        { promoStatus: 'available' },
+      );
       if (!paymentManagements || paymentManagements.length <= 0) {
         this.logger.log(
           'No payment management with available promo found',
@@ -164,21 +176,22 @@ export class PaymentManagementCronService {
 
     try {
       // check for payments due today
-      const paymentManagements: PaymentManagementDocument[] | null =
-        await this.PaymentManagementModel.find({
-          status: {
-            $in: [
-              'in-repayment',
-              'in-repayment prime',
-              'in-repayment non-prime',
-              'in-repayment delinquent1',
-              'in-repayment delinquent2',
-              'in-repayment delinquent3',
-              'in-repayment delinquent4',
-            ],
-          },
-          // screenTracking: '6316557011db2742dc99deb2',
-        }).populate('screenTracking');
+      const paymentManagements:
+        | PaymentManagementDocument[]
+        | null = await this.PaymentManagementModel.find({
+        status: {
+          $in: [
+            'in-repayment',
+            'in-repayment prime',
+            'in-repayment non-prime',
+            'in-repayment delinquent1',
+            'in-repayment delinquent2',
+            'in-repayment delinquent3',
+            'in-repayment delinquent4',
+          ],
+        },
+        // screenTracking: '6316557011db2742dc99deb2',
+      }).populate('screenTracking');
       if (!paymentManagements || paymentManagements.length <= 0) {
         this.logger.log(
           'No active loans found',
@@ -190,16 +203,14 @@ export class PaymentManagementCronService {
       for (const paymentManagement of paymentManagements) {
         try {
           paymentManagementId = paymentManagement._id;
-          const screenTracking: ScreenTrackingDocument =
-            paymentManagement.screenTracking as ScreenTrackingDocument;
+          const screenTracking: ScreenTrackingDocument = paymentManagement.screenTracking as ScreenTrackingDocument;
 
           // find next available payment schedule items that is before today's date
-          const paymentScheduleItems: IPaymentScheduleItem[] =
-            paymentManagement.paymentSchedule.filter(
-              (scheduleItem) =>
-                moment(scheduleItem.date).startOf('day').isBefore(today) &&
-                scheduleItem.status === 'opened',
-            );
+          const paymentScheduleItems: IPaymentScheduleItem[] = paymentManagement.paymentSchedule.filter(
+            (scheduleItem) =>
+              moment(scheduleItem.date).startOf('day').isBefore(today) &&
+              scheduleItem.status === 'opened',
+          );
 
           // If there is no late payments in the schedule
           if (!paymentScheduleItems || paymentScheduleItems.length <= 0) {
@@ -212,10 +223,9 @@ export class PaymentManagementCronService {
             continue;
           } else {
             const furthestLatePayment = paymentScheduleItems[0];
-            const updateStatus: PaymentManagementDocument['status'] =
-              await this.determineDelinquentTier(
-                moment(today).diff(furthestLatePayment.date, 'day'),
-              );
+            const updateStatus: PaymentManagementDocument['status'] = await this.determineDelinquentTier(
+              moment(today).diff(furthestLatePayment.date, 'day'),
+            );
             const delinquentDays = moment(today).diff(
               furthestLatePayment.date,
               'day',
@@ -254,10 +264,11 @@ export class PaymentManagementCronService {
             `${PaymentManagementCronService.name}#delinquencyCron`,
           );
 
-          const newPaymentManagement: PaymentManagementDocument | null =
-            await this.PaymentManagementModel.findOne({
+          const newPaymentManagement: PaymentManagementDocument | null = await this.PaymentManagementModel.findOne(
+            {
               screenTracking,
-            });
+            },
+          );
           const { minimumPaymentAmount } = paymentManagement;
           const newPaymentSchedule = await this.paymentService.amortizeSchedule(
             minimumPaymentAmount,
@@ -346,17 +357,17 @@ export class PaymentManagementCronService {
   }
 
   @Cron(CronExpression.EVERY_HOUR)
-  async checkAchTransactionStatus(dateRange = 15, sendEmail = true) {
+  async updateReturnedACHPayments(dateRange = 0, sendEmail = true) {
     try {
       const requestId = String(Date.now());
-      const transactions = await this.flexPayService.getAchTransactionStatus(
+      const transactions = await this.flexPayService.getReturnedACHPayments(
         requestId,
         dateRange,
       );
 
       this.logger.log(
         'Updated Transactions',
-        `${PaymentManagementCronService.name}#checkAchTransactionStatus::transactions.length `,
+        `${PaymentManagementCronService.name}#updateReturnedACHPayments::transactions.length `,
         requestId,
         transactions.length,
       );
@@ -364,17 +375,15 @@ export class PaymentManagementCronService {
       for (const {
         transaction,
         screenTracking: screenTrackingId,
-        _id: achTransactionId,
         paymentRef,
-        status: transactionStatus,
       } of transactions) {
         const paymentManagement = await this.PaymentManagementModel.findOne({
-          screenTracking: transaction.screenTracking,
+          screenTracking: screenTrackingId,
         });
 
         this.logger.log(
           'Payment Management',
-          `${PaymentManagementCronService.name}#checkAchTransactionStatus::paymentManagement`,
+          `${PaymentManagementCronService.name}#updateReturnedACHPayments::paymentManagement`,
           requestId,
           paymentManagement,
         );
@@ -383,61 +392,43 @@ export class PaymentManagementCronService {
           continue;
         }
 
-        const isPastSettleDate =
-          new Date() >= new Date(transaction?.settleDate);
+        this.logger.log(
+          'Returned Payment',
+          `${PaymentManagementCronService.name}#updateReturnedACHPayments::transaction`,
+          requestId,
+          transaction,
+        );
 
-        if (
-          transactionStatus === TransactionStatus.SETTLED &&
-          isPastSettleDate
-        ) {
-          this.logger.log(
-            'Approved Payment',
-            `${PaymentManagementCronService.name}#checkAchTransactionStatus::transaction`,
-            requestId,
-            transaction,
-          );
-
-          await this.flexPayService.updateTransactionContext(
-            { _id: achTransactionId },
-            { status: TransactionStatus.APPROVED },
-          );
-        }
-
-        const isPastAcheEffectiveDate =
-          new Date() >
-          moment(transaction?.achEffectiveDate).endOf('day').toDate();
-
-        const isNonProcessedTransaction =
-          transactionStatus === TransactionStatus.PENDING &&
-          isPastAcheEffectiveDate;
-
-        if (
-          transactionStatus === TransactionStatus.FAILED ||
-          isNonProcessedTransaction
-        ) {
-          this.logger.log(
-            'Returned Payment',
-            `${PaymentManagementCronService.name}#checkAchTransactionStatus::transaction`,
-            requestId,
-            transaction,
-          );
-
-          await this.flexPayService.updateTransactionContext(
-            { _id: achTransactionId },
-            { status: TransactionStatus.FAILED },
-          );
-
-          await this.paymentService.handleReturnedPayment(
-            screenTrackingId as string,
-            paymentRef,
-            requestId,
-            transaction.returnMessage,
-            sendEmail,
-          );
-        }
+        await this.paymentService.handleReturnedPayment(
+          screenTrackingId as string,
+          paymentRef,
+          requestId,
+          transaction.returnMessage,
+          sendEmail,
+        );
       }
     } catch (error) {
-      this.logger.error('ERROR::checkAchTransactionStatus:', error);
+      this.logger.error('ERROR::updateReturnedACHPayments:', error);
+    }
+  }
+
+  @Cron(CronExpression.EVERY_HOUR)
+  async updateSettledACHPayments(dateRange = 0) {
+    try {
+      const requestId = String(Date.now());
+      const transactions = await this.flexPayService.getSettledPayments(
+        requestId,
+        dateRange,
+      );
+
+      this.logger.log(
+        'Updated Transactions',
+        `${PaymentManagementCronService.name}#updateSettledACHPayments::transactions.length `,
+        requestId,
+        transactions.length,
+      );
+    } catch (error) {
+      this.logger.error('ERROR::updateSettledACHPayments:', error);
     }
   }
 
@@ -445,8 +436,7 @@ export class PaymentManagementCronService {
   async checkCardChargedTransaction() {
     try {
       const requestId = String(Date.now());
-      const transactions =
-        await this.flexPayService.getChargedCardTransaction();
+      const transactions = await this.flexPayService.getChargedCardTransaction();
       const { data, ok, error } = transactions;
 
       if (!ok) {
@@ -487,8 +477,10 @@ export class PaymentManagementCronService {
             continue;
           }
           const newFlexReportTransaction = newFlexReport?.data?.data;
-          const { status: newStatus, response: newResponse } =
-            newFlexReportTransaction;
+          const {
+            status: newStatus,
+            response: newResponse,
+          } = newFlexReportTransaction;
 
           if (
             newResponse === TransactionStatus.APPROVED.toLowerCase() ||
@@ -538,19 +530,20 @@ export class PaymentManagementCronService {
 
     try {
       // check for payments due today
-      const paymentManagements: PaymentManagementDocument[] | null =
-        await this.PaymentManagementModel.find({
-          status: {
-            $in: [
-              'in-repayment prime',
-              'in-repayment non-prime',
-              'in-repayment delinquent1',
-              'in-repayment delinquent2',
-              'in-repayment delinquent3',
-              'in-repayment delinquent4',
-            ],
-          },
-        }).populate('screenTracking');
+      const paymentManagements:
+        | PaymentManagementDocument[]
+        | null = await this.PaymentManagementModel.find({
+        status: {
+          $in: [
+            'in-repayment prime',
+            'in-repayment non-prime',
+            'in-repayment delinquent1',
+            'in-repayment delinquent2',
+            'in-repayment delinquent3',
+            'in-repayment delinquent4',
+          ],
+        },
+      }).populate('screenTracking');
       if (!paymentManagements || paymentManagements.length <= 0) {
         this.logger.log(
           'No active loans found',
@@ -562,15 +555,13 @@ export class PaymentManagementCronService {
       for (const paymentManagement of paymentManagements) {
         try {
           paymentManagementId = paymentManagement._id;
-          const screenTracking: ScreenTrackingDocument =
-            paymentManagement.screenTracking as ScreenTrackingDocument;
+          const screenTracking: ScreenTrackingDocument = paymentManagement.screenTracking as ScreenTrackingDocument;
           // find next available payment schedule items that  before today's date
-          const paymentScheduleItems: IPaymentScheduleItem[] =
-            paymentManagement.paymentSchedule.filter(
-              (scheduleItem) =>
-                moment(scheduleItem.date).startOf('day').isBefore(today) &&
-                scheduleItem.status === 'opened',
-            );
+          const paymentScheduleItems: IPaymentScheduleItem[] = paymentManagement.paymentSchedule.filter(
+            (scheduleItem) =>
+              moment(scheduleItem.date).startOf('day').isBefore(today) &&
+              scheduleItem.status === 'opened',
+          );
 
           // If there is no late payments in the schedule
           if (!paymentScheduleItems || paymentScheduleItems.length <= 0) {
@@ -583,11 +574,10 @@ export class PaymentManagementCronService {
             continue;
           } else {
             const furthestLatePayment = paymentScheduleItems[0];
-            const collectionStatus: PaymentManagementDocument['collectionAssignStatus'] =
-              await this.determineCollectionTier(
-                moment(today).diff(furthestLatePayment.date, 'day'),
-                loanSettings.delinquencyPeriod,
-              );
+            const collectionStatus: PaymentManagementDocument['collectionAssignStatus'] = await this.determineCollectionTier(
+              moment(today).diff(furthestLatePayment.date, 'day'),
+              loanSettings.delinquencyPeriod,
+            );
             let collectionAccountStatus: PaymentManagementDocument['collectionsAccountStatus'] =
               '';
             if (collectionStatus != '') {
@@ -651,6 +641,172 @@ export class PaymentManagementCronService {
       return 'in-repayment delinquent3';
     } else {
       return 'in-repayment delinquent4';
+    }
+  }
+
+  /* #INFO 
+    This email reminder for LDS and COAL communicatio code
+    which target the user who got failed or retried by Underwriting rules 
+  */
+  @Cron(CronExpression.EVERY_HOUR)
+  async emailReminder() {
+    try {
+      const LDS_RuleIds = [];
+      const COAL_RuleIds = [];
+      for (const [key, value] of Object.entries(UNDERWRITING_RULES)) {
+        const { communicationCode, ruleId } = value;
+        if (communicationCode === COMMUNICATION_CODE.LDA)
+          LDS_RuleIds.push(ruleId);
+        if (communicationCode === COMMUNICATION_CODE.COAL)
+          COAL_RuleIds.push(ruleId);
+      }
+
+      // const coalApplication = await this.getCoalAndCoaApplications(
+      //   COAL_RuleIds,
+      // );
+      // return coalApplication;
+      const LdsApplication = await this.getLdsApplications(LDS_RuleIds);
+      return LdsApplication;
+    } catch (error) {
+      this.logger.error(
+        'ERROR COAL, COA and LDA Email Reminder cron',
+        `${PaymentManagementCronService.name}#emailReminder`,
+      );
+    }
+  }
+
+  async getLdsApplications(LDA_RuleIds: Array<string>) {
+    try {
+      const toEmailList = [];
+      const query = {
+        $and: [
+          { 'underwritingDecision.ruleId': { $in: LDA_RuleIds } },
+          { lastlevel: { $gt: 4, $lte: 6 } },
+        ],
+      };
+      const screenData = await this.screenTrackingModel
+        .find(query)
+        .populate('user');
+
+      await Promise.all(
+        screenData.map(async (application) => {
+          const { user, updatedAt } = application;
+          const userData = user as UserDocument;
+          const payloadObject = {
+            communicationCode: COMMUNICATION_CODE.LDA,
+            email: userData.email,
+          };
+
+          let LDA_emailAlert = application.LDA_emailAlert;
+          if (!LDA_emailAlert) LDA_emailAlert = { day: 0, time: null };
+
+          if (!LDA_emailAlert?.day) {
+            toEmailList.push(payloadObject);
+          } else if (LDA_emailAlert?.day < 8) {
+            const today: any = new Date();
+            const date2: any = new Date(LDA_emailAlert.time);
+            const hours = Math.abs(today - date2) / 36e5;
+            if (hours < 6 || hours > 6.7) return;
+            toEmailList.push(payloadObject);
+          }
+          LDA_emailAlert.day += 1;
+          LDA_emailAlert.time = new Date();
+
+          application.LDA_emailAlert = LDA_emailAlert;
+          await application.save();
+        }),
+      );
+      const payload = {
+        emails: toEmailList,
+        communicationCode: COMMUNICATION_CODE.LDA,
+      };
+
+      this.sendEmailReminder(payload);
+      return { toEmailList, screenData };
+    } catch (error) {
+      this.logger.error(
+        'Running COAL, COA and LDA Email Reminder cron',
+        `${PaymentManagementCronService.name}#emailReminder`,
+        error,
+      );
+    }
+  }
+
+  async getCoalAndCoaApplications(COAL_RuleIds: Array<string>) {
+    try {
+      const toEmailList = [];
+      const query = {
+        $and: [
+          { 'underwritingDecision.ruleId': { $in: COAL_RuleIds } },
+          { lastlevel: 3 },
+        ],
+      };
+      const screenData = await this.screenTrackingModel
+        .find(query)
+        .populate('user');
+
+      await Promise.all(
+        screenData.map(async (application) => {
+          const { user, updatedAt, origin } = application;
+          const userData = user as UserDocument;
+
+          let COAL_emailAlert = application.COAL_emailAlert;
+          if (!COAL_emailAlert) COAL_emailAlert = new Date(updatedAt);
+
+          const today: any = new Date();
+          const date2: any = new Date(COAL_emailAlert);
+          const hours = Math.abs(today - date2) / 36e5;
+          const conditionsOfIntervals = {
+            firstInterval: hours >= 1 && hours <= 2,
+            secondInterval: hours >= 6 && hours <= 7,
+            thirdInterval: hours >= 24 && hours <= 26,
+            forthInterval: hours >= 48 && hours <= 49,
+          };
+
+          const payloadObject = {
+            communicationCode:
+              origin === 'WEB'
+                ? COMMUNICATION_CODE.COAL
+                : COMMUNICATION_CODE.COA,
+            email: userData.email,
+          };
+
+          if (Object.values(conditionsOfIntervals).includes(true)) {
+            toEmailList.push(payloadObject);
+            application.COAL_emailAlert = today;
+            await application.save();
+          }
+        }),
+      );
+      const payload = {
+        emails: toEmailList,
+      };
+      this.sendEmailReminder(payload);
+    } catch (error) {
+      this.logger.error(
+        'Running COAL, COA and LDA Email Reminder cron',
+        `${PaymentManagementCronService.name}#emailReminder`,
+        error,
+      );
+    }
+  }
+
+  async sendEmailReminder(payload: any) {
+    try {
+      const { LOS_URL } = config();
+      const url = `${LOS_URL}/admin/sendReminder`;
+      const response = await axios.post(url, payload);
+      const { data, status, statusText } = response;
+      if (status !== 200) {
+        throw new HttpException(statusText, status);
+      }
+      return;
+    } catch (error) {
+      this.logger.error(
+        'Error while sending reminder email',
+        `${PaymentManagementCronService.name}#sendEmailReminder`,
+        error,
+      );
     }
   }
 }
