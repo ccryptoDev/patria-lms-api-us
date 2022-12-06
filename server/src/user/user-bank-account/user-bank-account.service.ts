@@ -71,13 +71,20 @@ export class UserBankAccountService {
     // const userBankData: Array<any> = [];
     const userBankData = JSON.parse(JSON.stringify(cards)) as any[];
     userBankData.forEach((item: any) => {
+      const routingNumber = item.routingNumber;
+      // routingNumber =
+      //   routingNumber &&
+      //   `***** ${String(routingNumber).substring(routingNumber.length - 4)}`;
+
       Object.assign(item, {
         bankName: item.financialInstitution,
         institutionType: item.accountType,
         screenTracking: screenTrackingId,
         user: userId,
+        routingNumber,
       });
     });
+
     return userBankData;
     // console.log('cards===', cards);
     // return this.userBankAccountModel.find({
