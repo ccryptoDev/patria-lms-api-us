@@ -28,10 +28,10 @@ export class PaymentManagementController {
     private readonly flexPayService: FlexPayService,
   ) {}
 
-  @Post('test/checkAchTransactionStatus')
-  async checkAchTransactionStatus(@Query('dateRange') dateRange = '15') {
+  @Post('test/updateReturnedACHPayments')
+  async updateReturnedACHPayments(@Query('dateRange') dateRange = '15') {
     try {
-      await this.paymentManagementCron.checkAchTransactionStatus(
+      await this.paymentManagementCron.updateReturnedACHPayments(
         parseInt(dateRange),
         false,
       );
@@ -40,15 +40,38 @@ export class PaymentManagementController {
     }
   }
 
-  @Post('test/checkExpiredApplications')
-  async runAutomaticPayments() {
+  @Post('test/updateSettledACHPayments')
+  async updateSettledACHPayments(@Query('dateRange') dateRange = '15') {
+    try {
+      await this.paymentManagementCron.updateSettledACHPayments(
+        parseInt(dateRange),
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Post('test/checkCardChargedTransaction')
+  async checkCardChargedTransaction() {
     if (process.env.NODE_ENV === 'production') {
       throw new ForbiddenException();
     }
 
     try {
-      // await this.paymentManagementCron.checkExpiredApplications();
       return await this.paymentManagementCron.checkCardChargedTransaction();
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Post('test/checkExpiredApplications')
+  async checkExpiredApplications() {
+    if (process.env.NODE_ENV === 'production') {
+      throw new ForbiddenException();
+    }
+
+    try {
+      await this.paymentManagementCron.checkExpiredApplications();
     } catch (error) {
       throw error;
     }
@@ -73,7 +96,6 @@ export class PaymentManagementController {
     @Req() request: Request,
   ) {
     let response = null;
-    // response = await this.flexPayService.getAchTransactionStatus();
     if (payload.type === PaymentType.ACH) {
       response = await this.paymentManagementService.makePaymentFlexPayACH(
         payload,
@@ -113,7 +135,6 @@ export class PaymentManagementController {
     @Req() request: Request,
   ) {
     let response = null;
-    // response = await this.flexPayService.getAchTransactionStatus();
     if (payload.type === PaymentType.ACH) {
       response = await this.paymentManagementService.makePaymentFlexPayACH(
         payload,
@@ -131,6 +152,15 @@ export class PaymentManagementController {
     }
 
     return response;
+  }
+
+  @Post('test/emailCron')
+  async testEmailCron() {
+    try {
+      return await this.paymentManagementCron.emailReminder();
+    } catch (error) {
+      throw error;
+    }
   }
 
   // @Post('makePayment')
