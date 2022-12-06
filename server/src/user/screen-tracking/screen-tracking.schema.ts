@@ -165,6 +165,9 @@ export class ScreenTracking {
   @Prop()
   source: string;
 
+  @Prop()
+  origin: string;
+
   @Prop({ type: Array || String || mongoose.Schema.Types.ObjectId })
   transUnion: any;
 
@@ -179,8 +182,19 @@ export class ScreenTracking {
 
   @Prop()
   isDisbursed: boolean;
+
+  @Prop({ type: Object })
+  LDA_emailAlert: {
+    time: Date;
+    day: number;
+  };
+
+  @Prop({ type: Date })
+  COAL_emailAlert: Date;
+
+  @Prop()
+  updatedAt: Date;
 }
 
-export const ScreenTrackingSchema = SchemaFactory.createForClass(
-  ScreenTracking,
-);
+export const ScreenTrackingSchema =
+  SchemaFactory.createForClass(ScreenTracking);
