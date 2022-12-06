@@ -28,7 +28,7 @@ export enum logActivityModuleNames {
   MANAGE_PATIENTS = 'Manage Borrowers',
   MANAGE_PRACTICES = 'Manage Practices',
   MANAGE_USERS = 'Manage Admin Users',
-  OPPORTUNITIES = 'Opportunities',
+  OPPORTUNITIES = 'Application status',
   PAYMENT_SCHEDULE = 'Payment Schedule',
 }
 
